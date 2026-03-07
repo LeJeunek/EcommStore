@@ -4,10 +4,11 @@ import Image from "next/image";
 import ProductPrice from "./product-price";
 import { Product } from '@/types';
 const ProductCard = ({ product }: { product: Product }) => {
+  const stringifiedRating = product.rating.toString()
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="p-0 items-center">
-        <Link href={"/product/${product.slug}"}>
+        <Link href={`/product/${product.slug}`}>
           <Image
             src={product.images[0]}
             alt={product.name}
@@ -23,7 +24,7 @@ const ProductCard = ({ product }: { product: Product }) => {
           <h2 className="text-sm font-medium">{product.name}</h2>
         </Link>
         <div className="flex-between gap-4">
-          <p>{product.rating} Stars</p>
+          <p>{stringifiedRating} Stars</p>
           {product.stock > 0 ? (
             <ProductPrice value={Number(product.price)} />
           ) : (
