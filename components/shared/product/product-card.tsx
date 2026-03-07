@@ -12,7 +12,7 @@ const ProductCard = ({ product }: { product: Product }) => {
           <Image
             src={product.images[0]}
             alt={product.name}
-            height={300}
+            height={1000}
             width={300}
             priority={true}
           />
