@@ -1,10 +1,9 @@
-'use server';
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
-export async function getLatestProducts() {
-  // Returns an array of products
+export const getLatestProducts = async () => {
+  const prisma = getPrisma();
   return prisma.product.findMany({
-    take: 4,
     orderBy: { createdAt: "desc" },
+    take: Number(process.env.LATEST_PRODUCTS_LIMIT) || 4,
   });
-}
+};
