@@ -3,11 +3,14 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "./auth.config";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcrypt-ts-edge"; // Using async compare
+import bcrypt from "bcryptjs";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
+    session: {
+    strategy: "jwt",
+  },
   providers: [
     CredentialsProvider({
       async authorize(credentials) {
@@ -29,10 +32,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     return null;
   }
 
-  const isMatch = await compare(
-    credentials.password as string,
-    user.password
-  );
+  const isMatch = await bcrypt.compare(
+  credentials.password as string,
+  user.password
+);
+
 
   console.log("PASSWORD MATCH:", isMatch);
 
