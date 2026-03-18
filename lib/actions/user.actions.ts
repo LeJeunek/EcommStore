@@ -43,11 +43,22 @@ export async function signUpUser(prevState: unknown, formData: FormData) {
       confirmPassword: formData.get("confirmPassword"),
     });
 
-    // 1. Store plain password for signIn, but hash for the DB
     const plainPassword = user.password;
     const hashedPassword = hashSync(plainPassword, 10);
 
-    // 2. Create the user in Prisma
+    // ✅ ADD THIS (pre-check to prevent Prisma error)
+    const existingUser = await prisma.user.findUnique({
+      where: { email: user.email },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        message: "Email already exists",
+      };
+    }
+
+    // ✅ Create user
     await prisma.user.create({
       data: {
         name: user.name,
@@ -56,20 +67,28 @@ export async function signUpUser(prevState: unknown, formData: FormData) {
       },
     });
 
-    // 3. Sign in using the PLAIN password
+    // ✅ Sign in AFTER successful creation
     await signIn("credentials", {
       email: user.email,
       password: plainPassword,
     });
 
     return { success: true, message: "User registered successfully" };
-  } catch (error) {
-    // 4. Handle Redirects (This MUST be first)
-    if (isRedirectError(error)) throw error;
-    console.error('DETAILED_SIGNUP_ERROR:', error);
 
-    // 5. Use the formatted error message
+  } catch (error: any) {
+    if (isRedirectError(error)) throw error;
+
+    if (error.name === 'ZodError') {
+      console.error("ZOD_VALIDATION_ERRORS:", error.errors);
+    } else {
+      console.error("SIGNUP_ERROR:", error);
+    }
+
     const message = await formatError(error);
-    return { success: false, message };
+
+    return {
+      success: false,
+      message,
+    };
   }
 }
