@@ -24,3 +24,10 @@ export const getLatestProducts = async () => {
     return [];
   }
 };
+
+export async function getProductBySlug(slug: string) {
+  
+  return prisma.product.findFirst({
+    where: { slug },
+  });
+}
