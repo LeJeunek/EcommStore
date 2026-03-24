@@ -1,16 +1,12 @@
-export interface Product {
+import { z } from 'zod';
+import { insertProductSchema, insertCartSchema, cartItemSchema} from '@/lib/validators';
+
+
+export type Product = z.infer<typeof insertProductSchema> & {
   id: string;
-  name: string;
-  slug: string;
-  category: string;
-  images: string[];
-  brand: string;
-  description: string;
-  stock: number;
-  price: string;  // Changed from Decimal to string
-  rating: string; // Changed from Decimal to string
-  numReviews: number;
-  isFeatured: boolean;
-  banner: string | null;
+  rating: string;
   createdAt: Date;
-}
+};
+
+export type Cart = z.infer<typeof insertCartSchema>;
+export type CartItem = z.infer<typeof cartItemSchema>;
