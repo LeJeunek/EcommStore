@@ -1,10 +1,19 @@
-// middleware.ts
-import { auth } from "./auth"; // Import the auth function you exported from auth.ts
 
-export default auth((req) => {
-  // Optional: add logic here
-});
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
-};
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+
+  const cartId = request.cookies.get("sessionCartId");
+
+  if (!cartId) {
+    response.cookies.set("sessionCartId", crypto.randomUUID(), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+  }
+
+  return response;
+}
