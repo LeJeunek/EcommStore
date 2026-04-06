@@ -73,7 +73,7 @@ export default async function ProductDetailsPage(props: {
                         productId: product.id,
                         name: product.name,
                         slug: product.slug,
-                        price: product.price,
+                        price: product.price.toString(),
                         qty: 1,
                         image: product.images![0],
                       }}

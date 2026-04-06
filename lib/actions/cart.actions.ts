@@ -130,9 +130,15 @@ export async function getMyCart() {
     const session = await auth();
     const userId = session?.user?.id as string | undefined;
 
-    const cart = await prisma.cart.findFirst({
+    let cart = await prisma.cart.findFirst({
       where: userId ? { userId } : { sessionCartId },
     });
+
+    if (!cart && userId) {
+      cart = await prisma.cart.findFirst({
+        where: { sessionCartId },
+      });
+    }
 
     if (!cart) return undefined;
 
@@ -140,7 +146,7 @@ export async function getMyCart() {
       ...cart,
       items: (cart.items as CartItem[]).map((i) => ({
         ...i,
-        price: Number(i.price), // 💥 Decimal converted to number
+        price: i.price.toString(), // Keep as string to match CartItem type
       })),
       itemsPrice: cart.itemsPrice.toString(),
       totalPrice: cart.totalPrice.toString(),
