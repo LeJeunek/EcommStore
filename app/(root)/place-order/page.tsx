@@ -75,47 +75,47 @@ const PlaceOrderPage = async () => {
                 </Link>
               </div>
             </CardContent>
+          </Card>
 
-            <Card>
-              <CardContent className="p-4 gap-4">
-                <h2 className="text-xl pb-4">Order Items</h2>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Price</TableHead>
+          <Card>
+            <CardContent className="p-4 gap-4">
+              <h2 className="text-xl pb-4">Order Items</h2>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Items</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cart.items.map((item) => (
+                    <TableRow key={item.slug}>
+                      <TableCell>
+                        <Link
+                          href={`/products/${item.slug}`}
+                          className="flex items-center"
+                        >
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            width={50}
+                            height={50}
+                          />
+                          <span className="px-2">{item.name}</span>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <span className="px-2">{item.qty}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${item.price}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cart.items.map((item) => (
-                      <TableRow key={item.slug}>
-                        <TableCell>
-                          <Link
-                            href={`/products/${item.slug}`}
-                            className="flex items-center"
-                          >
-                            <Image
-                              src={item.image}
-                              alt={item.name}
-                              width={50}
-                              height={50}
-                            />
-                            <span className="px-2">{item.name}</span>
-                          </Link>
-                        </TableCell>
-                        <TableCell>
-                          <span className="px-2">{item.qty}</span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ${item.price}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
           </Card>
         </div>
         <div>

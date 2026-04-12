@@ -1,13 +1,14 @@
 "use server";
 
 import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { formatError } from "@/lib/utils";
+import { convertToPlainObject, formatError } from "@/lib/utils";
 import { auth } from "@/auth";
 import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { insertOrderSchema } from "@/lib/validators";
+import { CartItem } from "@/types";
 
 export async function createOrder(formData: FormData) {
   try {
@@ -90,20 +91,17 @@ export async function getOrderById(orderId: string) {
     const session = await auth();
     if (!session) throw new Error("User not authenticated");
 
-    const order = await prisma.order.findFirst({
+    const data = await prisma.order.findFirst({
       where: {
         id: orderId,
         userId: session.user.id,
       },
       include: {
         orderItems: true,
-        user: true,
+        user: { select: { name: true, email: true, paymentMethod: true } },
       },
     });
-
-    if (!order) throw new Error("Order not found");
-
-    return order;
+    return convertToPlainObject(data);
   } catch (error) {
     if (isRedirectError(error)) throw error;
     throw new Error(await formatError(error));
