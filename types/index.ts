@@ -6,6 +6,7 @@ import {
   shippingAddressSchema,
   insertOrderItemSchema,
   insertOrderSchema,
+  paymentResultSchema,
 } from "@/lib/validators";
 import {} from "@/lib/validators";
 import { Or } from "@prisma/client/runtime/client";
@@ -31,3 +32,5 @@ export type Order = z.infer<typeof insertOrderSchema> & {
   orderItems: OrderItem[];
   user: { name: string; email: string };
 };
+
+export type PaymentResult = z.infer<typeof paymentResultSchema>;
