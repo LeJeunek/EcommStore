@@ -75,7 +75,9 @@ const cart = await prisma.cart.findFirst({
     }
 
     // 🧠 EXISTING CART LOGIC (IMMUTABLE)
-    const currentItems = Array.isArray(cart.items) ? cart.items : [];
+    const currentItems = Array.isArray(cart.items)
+      ? cart.items.filter((x): x is CartItem => x !== null && typeof x === 'object' && 'productId' in x)
+      : [];
 
     const existingIndex = currentItems.findIndex(
       (x) => x.productId === item.productId
@@ -193,7 +195,7 @@ export async function removeItemFromCart(productId: string) {
     await prisma.cart.update({
       where: { id: cart.id },
       data: {
-        items: cart.items as Prisma.CartUpdateItemsInput[],
+        items: cart.items,
         ...calcPrice(cart.items as CartItem[]),
       }
     });

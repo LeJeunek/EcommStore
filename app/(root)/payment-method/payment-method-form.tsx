@@ -43,7 +43,7 @@ const PaymentMethodForm = ({
 
   const onSubmit = (values: z.infer<typeof paymentMethodSchema>) => {
     startTransition(async () => {
-      const res = await updateUserPaymentMethod(values);
+      const res = await updateUserPaymentMethod({ data: values });
       if (!res.success) {
         toast({
           variant: "destructive",

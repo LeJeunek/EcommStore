@@ -19,6 +19,7 @@ import {
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
 import PlaceOrderForm from "./place-order.form";
+import PlaceOrderPayPal from "./place-order-paypal";
 
 export const metadata: Metadata = {
   title: "Place Order",
@@ -137,7 +138,17 @@ const PlaceOrderPage = async () => {
                 Total
                 <div>{formatCurrency(cart.totalPrice)}</div>
               </div>
-              <PlaceOrderForm />
+              {user.paymentMethod?.toLowerCase() === "paypal" ? (
+                <PlaceOrderPayPal
+                  paypalClientId={
+                    process.env.PAYPAL_CLIENT_ID ||
+                    process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ||
+                    "sb"
+                  }
+                />
+              ) : (
+                <PlaceOrderForm />
+              )}
             </CardContent>
           </Card>
         </div>

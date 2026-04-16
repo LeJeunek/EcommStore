@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { getOrderById } from "@/lib/actions/order.actions";
-import { ShippingAddress } from "@/types";
+import { getUserById } from "@/lib/actions/user.actions";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CheckoutSteps from "@/components/shared/checkout-steps";
@@ -15,12 +15,14 @@ export const metadata: Metadata = {
 const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
   const { id } = await props.params;
   const session = await auth();
-  if (!session) throw new Error("User not authenticated");
+  if (!session?.user?.id) throw new Error("User not authenticated");
 
   const order = await getOrderById(id);
   if (!order) {
     notFound();
   }
+
+  const user = await getUserById(session.user.id);
 
   return (
     <>
@@ -30,7 +32,11 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
 
       <div className="grid md:grid-cols-3 md:gap-5">
         <div className="md:col-span-2 overflow-x-auto space-y-4">
-          <OrderDetailsTable order={order} />
+          <OrderDetailsTable
+            order={order}
+            paypalClientId={process.env.PAYPAL_CLIENT_ID || "sb"}
+            paymentMethod={user.paymentMethod || undefined}
+          />
         </div>
         <div>
           <Card>

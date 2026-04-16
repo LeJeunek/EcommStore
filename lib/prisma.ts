@@ -56,33 +56,33 @@ export const prisma =
       order: {
         itemsPrice: {
           needs: { itemsPrice: true },
-          compute(cart) {
-            return cart.itemsPrice.toString();
+          compute(order) {
+            return order.itemsPrice.toString();
           },
         },
         shippingPrice: {
           needs: { shippingPrice: true },
-          compute(cart) {
-            return cart.shippingPrice.toString();
+          compute(order) {
+            return order.shippingPrice.toString();
           },
         },
         taxPrice: {
           needs: { taxPrice: true },
-          compute(cart) {
-            return cart.taxPrice.toString();
+          compute(order) {
+            return order.taxPrice.toString();
           },
         },
         totalPrice: {
           needs: { totalPrice: true },
-          compute(cart) {
-            return cart.totalPrice.toString();
+          compute(order) {
+            return order.totalPrice.toString();
           },
         },
       },
       orderItem: {
         price: {
-          compute(cart) {
-            return cart.price.toString();
+          compute(orderItem) {
+            return orderItem.price.toString();
           },
         },
       },
@@ -90,5 +90,5 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = prisma as any;
 }

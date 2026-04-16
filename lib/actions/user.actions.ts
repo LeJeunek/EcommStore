@@ -149,7 +149,7 @@ export async function updateUserPaymentMethod(data: { data: z.infer<typeof payme
     });
     if (!currentUser) throw new Error('User not found');
 
-    const paymentMethod = paymentMethodSchema.parse(data);
+  const paymentMethod = paymentMethodSchema.parse(data.data);
     await prisma.user.update({
       where: { id: currentUser.id },
       data: { paymentMethod: paymentMethod.type }
