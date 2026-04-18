@@ -1,28 +1,36 @@
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "ProStore";
-export const APP_DESCRIPTION = process.env.NEXT_PUBLIC_APP_DESCRIPTION || "ProStore is a modern e-commerce platform built with Next.js and TypeScript, offering a seamless shopping experience with a wide range of products and secure transactions.";
-export const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
-export const LATEST_PRODUCT_LIMIT = Number(process.env.LATEST_PRODUCTS_LIMIIT) || 4;
-
+export const APP_DESCRIPTION =
+  process.env.NEXT_PUBLIC_APP_DESCRIPTION ||
+  "ProStore is a modern e-commerce platform built with Next.js and TypeScript, offering a seamless shopping experience with a wide range of products and secure transactions.";
+export const SERVER_URL =
+  process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3000";
+export const LATEST_PRODUCT_LIMIT =
+  Number(process.env.LATEST_PRODUCTS_LIMIIT) || 4;
 
 export const signInDefaultValues = {
-    email: '',
-    password: '',
+  email: "",
+  password: "",
 };
 
 export const signUpDefaultValues = {
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
 };
 
 export const shippingAddressDefaultValues = {
-    fullName: '',
-    streetAddress: '',
-    city: '',
-    postalCode: '',
-    country: '',
-}
+  fullName: "",
+  streetAddress: "",
+  city: "",
+  postalCode: "",
+  country: "",
+};
 
-export const PAYMENT_METHODS =process.env.PAYMENT_METHODS ? process.env.PAYMENT_METHODS.split(',').map(method => method.trim()) : ["Paypal", "Stripe", "CashOnDelivery"];
-export const DEFAULT_PAYMENT_METHOD = process.env.DEFAULT_PAYMENT_METHOD || "Paypal";
+export const PAYMENT_METHODS = process.env.PAYMENT_METHODS
+  ? process.env.PAYMENT_METHODS.split(",").map((method) => method.trim())
+  : ["Paypal", "Stripe", "CashOnDelivery"];
+export const DEFAULT_PAYMENT_METHOD =
+  process.env.DEFAULT_PAYMENT_METHOD || "Paypal";
+
+export const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 2;
