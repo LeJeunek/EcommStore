@@ -1,6 +1,11 @@
 "use server";
 
-import { signInFormSchema, signUpFormSchema, shippingAddressSchema, paymentMethodSchema } from "../validators";
+import {
+  signInFormSchema,
+  signUpFormSchema,
+  shippingAddressSchema,
+  paymentMethodSchema,
+} from "../validators";
 import { signIn, signOut } from "@/auth";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { hashSync } from "bcrypt-ts-edge";
@@ -12,11 +17,10 @@ import { redirect } from "next/navigation";
 import { success } from "zod";
 import { z } from "zod";
 
-
 // Sign in the user with credentials
 export async function signInWithCredentials(
   prevState: unknown,
-  formData: FormData
+  formData: FormData,
 ) {
   try {
     const user = signInFormSchema.parse({
@@ -53,7 +57,7 @@ export async function signUpUser(prevState: unknown, formData: FormData) {
       password: formData.get("password"),
       confirmPassword: formData.get("confirmPassword"),
     });
-    
+
     const plainPassword = user.password;
     const hashedPassword = hashSync(plainPassword, 10);
 
@@ -85,11 +89,10 @@ export async function signUpUser(prevState: unknown, formData: FormData) {
     });
 
     return { success: true, message: "User registered successfully" };
-
   } catch (error: any) {
     if (isRedirectError(error)) throw error;
 
-    if (error.name === 'ZodError') {
+    if (error.name === "ZodError") {
       console.error("ZOD_VALIDATION_ERRORS:", error.errors);
     } else {
       console.error("SIGNUP_ERROR:", error);
@@ -108,7 +111,7 @@ export async function signUpUser(prevState: unknown, formData: FormData) {
 
 export async function getUserById(userId: string) {
   const user = await prisma.user.findFirst({
-    where: { id: userId }
+    where: { id: userId },
   });
   if (!user) throw new Error("User not found");
   return user;
@@ -122,18 +125,18 @@ export async function updateUserAddress(data: ShippingAddress) {
       where: { id: session?.user?.id },
     });
 
-    if (!currentUser) throw new Error('User not found');
+    if (!currentUser) throw new Error("User not found");
     const address = shippingAddressSchema.parse(data);
 
     await prisma.user.update({
       where: { id: currentUser.id },
-      data: {address}
+      data: { address },
     });
 
     return {
       success: true,
-      message: 'User updated succesfully'
-    }
+      message: "User updated succesfully",
+    };
   } catch (error) {
     return { success: false, message: formatError(error) };
   }
@@ -141,26 +144,57 @@ export async function updateUserAddress(data: ShippingAddress) {
 
 // Update user payment method
 
-export async function updateUserPaymentMethod(data: { data: z.infer<typeof paymentMethodSchema> }) {
+export async function updateUserPaymentMethod(data: {
+  data: z.infer<typeof paymentMethodSchema>;
+}) {
   try {
     const session = await auth();
     const currentUser = await prisma.user.findFirst({
       where: { id: session?.user?.id },
     });
-    if (!currentUser) throw new Error('User not found');
+    if (!currentUser) throw new Error("User not found");
 
-  const paymentMethod = paymentMethodSchema.parse(data.data);
+    const paymentMethod = paymentMethodSchema.parse(data.data);
     await prisma.user.update({
       where: { id: currentUser.id },
-      data: { paymentMethod: paymentMethod.type }
+      data: { paymentMethod: paymentMethod.type },
     });
 
     return {
       success: true,
-      message: 'User updated succesfully'
+      message: "User updated succesfully",
     };
+  } catch (error) {
+    return { success: false, message: formatError(error) };
+  }
+}
 
+// Update the user profile
 
+export async function updateProfile(user: { name: string; email: string }) {
+  try {
+    const session = await auth();
+
+    const currentUser = await prisma.user.findFirst({
+      where: {
+        id: session?.user?.id,
+      },
+    });
+    if (!currentUser) throw new Error("User not found");
+
+    await prisma.user.update({
+      where: {
+        id: currentUser.id,
+      },
+      data: {
+        name: user.name,
+      },
+    });
+
+    return {
+      success: true,
+      message: "User updated successfully",
+    };
   } catch (error) {
     return { success: false, message: formatError(error) };
   }
