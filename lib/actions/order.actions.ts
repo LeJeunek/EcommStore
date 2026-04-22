@@ -11,6 +11,8 @@ import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { PAGE_SIZE } from "../constants";
 import { Prisma } from "@prisma/client";
+import { success } from "zod";
+import { error } from "console";
 
 // Create order from cart
 export async function createOrder() {
@@ -32,6 +34,7 @@ export async function createOrder() {
     const orderData = {
       userId: session.user.id,
       shippingAddress: user.address,
+      paymentMethod: user.paymentMethod,
       itemsPrice: cart.itemsPrice,
       shippingPrice: cart.shippingPrice,
       taxPrice: cart.taxPrice,
@@ -346,4 +349,89 @@ export async function getOrderSummary() {
     latestSales,
     salesData,
   };
+}
+
+// Get all orders
+
+export async function getAllOrders({
+  limit = PAGE_SIZE,
+  page,
+}: {
+  limit?: number;
+  page: number;
+}) {
+  const data = await prisma.order.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    skip: (page - 1) * limit,
+    include: { user: { select: { name: true } } },
+  });
+
+  const dataCount = await prisma.order.count();
+
+  return {
+    data,
+    totalPages: Math.ceil(dataCount / limit),
+  };
+}
+
+// Delete an order
+
+export async function deleteOrder(id: string) {
+  try {
+    await prisma.order.delete({ where: { id } });
+    revalidatePath("/admin/orders");
+
+    return {
+      success: true,
+      message: "Order deleted succesfully",
+    };
+  } catch (error) {
+    return { success: false, message: formatError(error) };
+  }
+}
+
+// Update COD order to paid
+
+export async function updateOrderToPaidCOD(orderId: string) {
+  try {
+    await updateOrderToPaid({ orderId });
+    revalidatePath(`/order/${orderId}`);
+
+    return { success: true, message: "Order was marked paid" };
+  } catch (error) {
+    return { success: false, message: formatError(error) };
+  }
+}
+
+// Update COD orderr to deliverred
+
+export async function deliverOrder(orderId: string) {
+  try {
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+      },
+    });
+
+    if (!order) throw new Error("Order not found");
+    if (!order.isPaid) throw new Error("Order is not paid");
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        isDelivered: true,
+        deliveredAt: new Date(),
+      },
+    });
+
+    revalidatePath(`/order/${orderId}`);
+
+    return {
+      success: true,
+      message: "Order has been marked delivered",
+    };
+  } catch (error) {
+    return { success: false, message: formatError(error) };
+  }
 }

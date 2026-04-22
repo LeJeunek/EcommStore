@@ -18,6 +18,7 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
   if (!session?.user?.id) throw new Error("User not authenticated");
 
   const order = await getOrderById(id);
+  const safeOrder = JSON.parse(JSON.stringify(order));
   if (!order) {
     notFound();
   }
@@ -33,9 +34,10 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
       <div className="grid md:grid-cols-3 md:gap-5">
         <div className="md:col-span-2 overflow-x-auto space-y-4">
           <OrderDetailsTable
-            order={order}
+            order={safeOrder}
             paypalClientId={process.env.PAYPAL_CLIENT_ID || "sb"}
             paymentMethod={user.paymentMethod || undefined}
+            isAdmin={session?.user?.role === "admin" || false}
           />
         </div>
         <div>
