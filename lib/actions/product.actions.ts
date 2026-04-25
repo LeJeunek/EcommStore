@@ -2,7 +2,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE } from "../constants";
-import { formatError, success } from "@/lib/utils";
+import { convertToPlainObject, formatError, success } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { insertProductSchema, updateProductSchema } from "../validators";
 import { z } from "zod";
@@ -21,6 +21,7 @@ export const getLatestProducts = async () => {
   }));
 };
 
+//  Get a single product by it's Slug
 export async function getProductBySlug(slug: string) {
   const product = await prisma.product.findFirst({ where: { slug } });
   if (!product) return null;
@@ -30,6 +31,12 @@ export async function getProductBySlug(slug: string) {
     price: Number(product.price),
     rating: Number(product.rating),
   };
+}
+//  Get a single product by it's ID
+export async function getProductById(productId: string) {
+  const data = await prisma.product.findFirst({ where: { id: productId } });
+
+  return convertToPlainObject(data);
 }
 
 // Get all products
@@ -46,6 +53,7 @@ export async function getAllProducts({
   category?: string;
 }) {
   const data = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
     skip: (page - 1) * limit,
     take: limit,
   });

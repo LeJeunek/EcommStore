@@ -126,3 +126,11 @@
     @apply bg-black text-white;
   }
 }
+/*  Uploadthing butotn text ovveride  */
+.upload-field [data-ut-element="button"] {
+  color: #000 !important;
+}
+
+html.dark .upload-field [data-ut-element="button"] {
+  color: #ffffff !important;
+}
