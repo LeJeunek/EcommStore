@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { USER_ROLES } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import z from "zod";
+import { updateUser } from "@/lib/actions/user.actions";
 
 const UpdateUserForm = ({
   user,
@@ -32,8 +34,31 @@ const UpdateUserForm = ({
   const router = useRouter();
   const { toast } = useToast();
 
-  const onSubmit = () => {
-    return;
+  const onSubmit = async (values: z.infer<typeof updateUserSchema>) => {
+    try {
+      const res = await updateUser({
+        ...values,
+        id: user.id,
+      });
+
+      if (!res.success) {
+        return toast({
+          variant: "destructive",
+          description: res.message,
+        });
+      }
+
+      toast({
+        description: res.message,
+      });
+      form.reset();
+      router.push("/admin/users");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: (error as Error).message,
+      });
+    }
   };
 
   const form = useForm<z.infer<typeof updateUserSchema>>({
@@ -134,9 +159,14 @@ const UpdateUserForm = ({
           />
         </div>
         <div className="flex-between mt-4">
-        <Button type='submit' className="w-full" disabled={form.formState.isSubmitting}>
-            { form.formState.isSubmitting ? 'Submitting...' : 'Update User'}
-        </Button></div>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={form.formState.isSubmitting}
+          >
+            {form.formState.isSubmitting ? "Submitting..." : "Update User"}
+          </Button>
+        </div>
       </form>
     </Form>
   );
