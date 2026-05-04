@@ -6,6 +6,7 @@ import { convertToPlainObject, formatError, success } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { insertProductSchema, updateProductSchema } from "../validators";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export const getLatestProducts = async () => {
   const products = await prisma.product.findMany({
@@ -46,35 +47,67 @@ export async function getAllProducts({
   limit = PAGE_SIZE,
   page,
   category,
+  price,
+  rating,
+  sort,
 }: {
   query: string;
   limit?: number;
   page: number;
   category?: string;
+  price: string;
+  rating: string;
+  sort?: string;
 }) {
-  // 1. Define the filter conditions
-  const where = {
-    ...(query && query !== "all"
+  //  Query FIlter
+  const queryFilter: Prisma.ProductWhereInput =
+    query && query !== "all"
       ? {
           name: {
             contains: query,
-            mode: "insensitive" as const, // Makes "tommy" match "Tommy"
+            mode: "insensitive",
+          } as Prisma.StringFilter,
+        }
+      : {};
+  // Category filter
+  const categoryFilter = category && category !== "all" ? { category } : {};
+
+  //  Price Filter
+  const priceFilter: Prisma.ProductWhereInput =
+    price && price !== "all"
+      ? {
+          price: {
+            gte: Number(price.split("-")[0]),
+            lte: Number(price.split("-")[1]),
           },
         }
-      : {}),
-    ...(category && category !== "all" ? { category } : {}),
-  };
+      : {};
+
+  // Rating Filter
+  const ratingFilter =
+    rating && rating !== "all"
+      ? {
+          rating: {
+            gte: Number(rating),
+          },
+        }
+      : {};
 
   // 2. Apply the 'where' filter to the query
   const data = await prisma.product.findMany({
-    where, // <--- Add this
+    where: {
+      ...queryFilter,
+      ...categoryFilter,
+      ...priceFilter,
+      ...ratingFilter,
+    }, // <--- Add this
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * limit,
     take: limit,
   });
 
   // 3. Apply the 'where' filter to the count so pagination stays accurate
-  const dataCount = await prisma.product.count({ where });
+  const dataCount = await prisma.product.count();
 
   return {
     data,
@@ -146,12 +179,11 @@ export async function updateProduct(data: z.infer<typeof updateProductSchema>) {
   }
 }
 
-
-// Get all categories 
+// Get all categories
 
 export async function getAllCategories() {
   const data = await prisma.product.groupBy({
-    by: ['category'],
+    by: ["category"],
     _count: true,
   });
   return data;
@@ -162,8 +194,8 @@ export async function getAllCategories() {
 export async function getFeaturedProducts() {
   const data = await prisma.product.findMany({
     where: { isFeatured: true },
-    orderBy: {createdAt: 'desc' },
-    take: 4
+    orderBy: { createdAt: "desc" },
+    take: 4,
   });
-  return convertToPlainObject(data)
+  return convertToPlainObject(data);
 }

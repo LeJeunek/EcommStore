@@ -1,9 +1,12 @@
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
 import ProductList from "@/components/shared/product/product-list";
-import { getLatestProducts, getFeaturedProducts } from "@/lib/actions/product.actions";
+import {
+  getLatestProducts,
+  getFeaturedProducts,
+} from "@/lib/actions/product.actions";
 import ProductCarousel from "@/components/shared/product/product-carousel";
-
+import ViewAllProductsButton from "@/components/view-all-products-button";
 const Homepage = async () => {
   const latestProducts = await getLatestProducts();
   const featuredProducts = await getFeaturedProducts();
@@ -12,15 +15,15 @@ const Homepage = async () => {
     ...product,
     price: product.price.toString(),
     rating: product.rating.toString(),
-  }))
+  }));
 
   return (
     <>
-    { featuredProducts.length > 0 && <ProductCarousel data={featuredProducts} />}
-      <ProductList
-        data={formattedProducts}
-        title="Newest Arrivals"
-      />
+      {featuredProducts.length > 0 && (
+        <ProductCarousel data={featuredProducts} />
+      )}
+      <ProductList data={formattedProducts} title="Newest Arrivals" />
+      <ViewAllProductsButton />
     </>
   );
 };
