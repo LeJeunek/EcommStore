@@ -189,11 +189,16 @@ export async function updateProduct(data: z.infer<typeof updateProductSchema>) {
 // Get all categories
 
 export async function getAllCategories() {
-  const data = await prisma.product.groupBy({
+  // Casting to 'any' bypasses the incompatible signature error
+  const data = await (prisma.product as any).groupBy({
     by: ["category"],
     _count: true,
+    orderBy: {
+      category: "asc",
+    },
   });
-  return data;
+
+  return data as { category: string; _count: number }[];
 }
 
 //  Get featured products
