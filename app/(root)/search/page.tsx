@@ -4,6 +4,7 @@ import {
   getAllProducts,
   getAllCategories,
 } from "@/lib/actions/product.actions";
+import { formatNumberWithDecimal } from "@/lib/utils";
 import Link from "next/link";
 
 const prices = [
@@ -232,7 +233,14 @@ const SearchPage = async (props: {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {products.data.length === 0 && <div>No products found</div>}
           {products.data.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={{
+                ...product,
+                price: product.price.toString(), // Convert Decimal to string
+                rating: product.rating.toString(), // Do the same for rating if needed
+              }}
+            />
           ))}
         </div>
       </div>
