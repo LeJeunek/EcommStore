@@ -12,12 +12,20 @@ import Autoplay from "embla-carousel-autoplay";
 import Link from "next/link";
 import Image from "next/image";
 
-const ProductCarousel = ({ data: initialData }: { data: any }) => {
-  // Extract the actual array regardless of whether it's wrapped in an object or not
-  const data = Array.isArray(initialData) ? initialData : initialData?.data;
+// Use 'any' for the prop type temporarily to stop the build from crashing
+// while we normalize the data inside the component.
+const ProductCarousel = ({ data }: { data: any }) => {
+  // 1. NORMALIZE DATA:
+  // This finds the array whether it's 'data', 'data.data', or just the raw object.
+  const products: Product[] = Array.isArray(data)
+    ? data
+    : data?.data && Array.isArray(data.data)
+      ? data.data
+      : [];
 
-  // If we still don't have an array, don't render (prevents .map crash)
-  if (!Array.isArray(data)) {
+  // 2. CHECK: If we still don't have products, don't crash, but don't hide either
+  if (products.length === 0) {
+    console.warn("ProductCarousel: No products found in 'data' prop", data);
     return null;
   }
 
@@ -34,7 +42,7 @@ const ProductCarousel = ({ data: initialData }: { data: any }) => {
       ]}
     >
       <CarouselContent>
-        {data.map((product: Product) => (
+        {products.map((product: Product) => (
           <CarouselItem key={product.id}>
             <Link href={`/product/${product.slug}`}>
               <div className="relative mx-auto">
@@ -45,7 +53,7 @@ const ProductCarousel = ({ data: initialData }: { data: any }) => {
                   width={0}
                   sizes="100vw"
                   className="w-full h-auto"
-                  priority // Helps with LCP for banners
+                  priority
                 />
                 <div className="absolute inset-0 flex items-end justify-center">
                   <h2 className="bg-gray-900 bg-opacity-50 text-2xl font-bold px-2 text-white">
