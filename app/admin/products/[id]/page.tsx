@@ -17,10 +17,22 @@ const AdminProductUpdatePage = async (props: {
 
   if (!product) return notFound();
 
+  // Convert Decimal types to string to match the Product type expected by ProductForm
+  const formattedProduct = {
+    ...product,
+    price: product.price.toString(),
+    rating: product.rating.toString(),
+  };
+
   return (
-    <div className="space-y-8 max-2-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto">
       <h1 className="h2-bold">Update Product</h1>
-      <ProductForm type="Update" product={product} productId={product.id} />
+      {/* Use formattedProduct here */}
+      <ProductForm
+        type="Update"
+        product={formattedProduct}
+        productId={product.id}
+      />
     </div>
   );
 };
