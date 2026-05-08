@@ -2,7 +2,7 @@
 "use server";
 import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE } from "../constants";
-import { convertToPlainObject, formatError, success } from "@/lib/utils";
+import { convertToPlainObject, formatError } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { insertProductSchema, updateProductSchema } from "../validators";
 import { z } from "zod";

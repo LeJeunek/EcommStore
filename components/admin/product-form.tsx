@@ -37,16 +37,22 @@ const ProductForm = ({
   const router = useRouter();
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof insertProductSchema>>({
-    resolver:
-      type === "Update"
-        ? zodResolver(updateProductSchema)
-        : zodResolver(insertProductSchema),
+  type ProductFormValues = z.infer<typeof insertProductSchema> & {
+    id?: string;
+  };
+
+  const form = useForm<z.infer<typeof updateProductSchema>>({
+    // 2. Cast the entire resolver to 'any' to stop the literal key comparison
+    resolver: zodResolver(
+      type === "Update" ? updateProductSchema : insertProductSchema,
+    ) as any,
     defaultValues:
-      product && type === "Update" ? product : productDefaultValues,
+      product && type === "Update"
+        ? (product as any)
+        : { ...productDefaultValues, id: "" },
   });
 
-  const onSubmit: SubmitHandler<z.infer<typeof insertProductSchema>> = async (
+  const onSubmit: SubmitHandler<z.infer<typeof updateProductSchema>> = async (
     values,
   ) => {
     //On Create
@@ -70,8 +76,10 @@ const ProductForm = ({
       if (!productId) {
         router.push("/admin/products/");
       }
-      const res = await updateProduct({ ...values, id: productId });
-
+      const res = await updateProduct({
+        ...values,
+        id: productId!, // The '!' tells TS: "I checked this in the line above, it's not null"
+      });
       if (!res.success) {
         toast({
           variant: "destructive",

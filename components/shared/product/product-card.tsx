@@ -2,15 +2,15 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
 import Image from "next/image";
 import ProductPrice from "./product-price";
-import { Product } from '@/types';
+import { Product } from "@/types";
 const ProductCard = ({ product }: { product: Product }) => {
-  const stringifiedRating = product.rating.toString()
+  const stringifiedRating = product.rating.toString();
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="p-0 items-center">
         <Link href={`/product/${product.slug}`}>
           <Image
-            src={product.images[0]}
+            src={product.images?.[0] ?? "/images/sample-product.jpg"}
             alt={product.name}
             height={300}
             width={300}
