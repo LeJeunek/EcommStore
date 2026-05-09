@@ -148,5 +148,5 @@ export const insertReviewSchema = z.object({
     .number()
     .int()
     .min(1, "Rating must be at least 1")
-    .max(1, "Rating must be at most 1"),
+    .max(5, "Rating must be at most 5"),
 });
