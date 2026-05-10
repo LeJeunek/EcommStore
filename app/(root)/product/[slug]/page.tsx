@@ -39,7 +39,6 @@ export default async function ProductDetailsPage(props: {
               </p>
               <h1 className="h3-bold">{product.name}</h1>
               <Rating value={Number(product.rating)} />
-              <p>{ product.numReviews }</p>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <ProductPrice
                   value={Number(product.price)}
