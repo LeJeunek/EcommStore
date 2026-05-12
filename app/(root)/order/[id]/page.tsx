@@ -27,7 +27,7 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
 
   const user = await getUserById(session.user.id);
 
-  let client_secret = null;
+  let client_secret: string | undefined;
 
   //  Check if is not paid and using stripe
   if (order.paymentMethod?.toLowerCase() === "stripe" && !order.isPaid) {
@@ -39,7 +39,7 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
       metadata: { orderId: order.id },
     });
 
-    client_secret = paymentIntent.client_secret;
+    client_secret = paymentIntent.client_secret ?? undefined;
   }
   return (
     <>

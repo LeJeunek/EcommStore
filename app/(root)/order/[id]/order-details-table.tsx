@@ -40,7 +40,7 @@ const OrderDetailsTable = ({
   paypalClientId: string;
   paymentMethod?: string;
   isAdmin: boolean;
-  stripeClientSecret?: string | null;
+  stripeClientSecret?: string;
 }) => {
   // Destructuring fixed (removed the trailing 'isPaid' and naming conflict)
   const {
