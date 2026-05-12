@@ -7,6 +7,8 @@ import CheckoutSteps from "@/components/shared/checkout-steps";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import OrderDetailsTable from "./order-details-table";
+import Stripe from "stripe";
+import StripePayment from "./stripe-payment";
 
 export const metadata: Metadata = {
   title: "Order Details",
@@ -25,6 +27,20 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
 
   const user = await getUserById(session.user.id);
 
+  let client_secret = null;
+
+  //  Check if is not paid and using stripe
+  if (order.paymentMethod?.toLowerCase() === "stripe" && !order.isPaid) {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(Number(order.totalPrice) * 100),
+      currency: "usd",
+      metadata: { orderId: order.id },
+    });
+
+    client_secret = paymentIntent.client_secret;
+  }
   return (
     <>
       <CheckoutSteps current={4} />
@@ -36,6 +52,7 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
           <OrderDetailsTable
             order={safeOrder}
             paypalClientId={process.env.PAYPAL_CLIENT_ID || "sb"}
+            stripeClientSecret={client_secret}
             paymentMethod={user.paymentMethod || undefined}
             isAdmin={session?.user?.role === "admin" || false}
           />
@@ -58,6 +75,19 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
               <div className="flex justify-between">
                 Total
                 <div>{formatCurrency(Number(order.totalPrice))}</div>
+              </div>
+              {/* THE FIX: Use toLowerCase() to match "stripe" vs "Stripe" */}
+              <div className="pt-4 border-t mt-4 space-y-2">
+                {/* The Logic Fix */}
+                {!order.isPaid &&
+                  order.paymentMethod?.toLowerCase() === "stripe" &&
+                  client_secret && (
+                    <StripePayment
+                      priceInCents={Math.round(Number(order.totalPrice) * 100)}
+                      orderId={order.id}
+                      clientSecret={client_secret}
+                    />
+                  )}
               </div>
             </CardContent>
           </Card>
