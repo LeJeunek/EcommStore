@@ -20,6 +20,7 @@ import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
 import PlaceOrderForm from "./place-order.form";
 import PlaceOrderPayPal from "./place-order-paypal";
+import PlaceOrderStripe from "./place-order-stripe";
 
 export const metadata: Metadata = {
   title: "Place Order",
@@ -146,6 +147,8 @@ const PlaceOrderPage = async () => {
                     "sb"
                   }
                 />
+              ) : user.paymentMethod?.toLowerCase() === "stripe" ? (
+                <PlaceOrderStripe />
               ) : (
                 <PlaceOrderForm />
               )}

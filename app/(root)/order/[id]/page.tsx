@@ -7,8 +7,6 @@ import CheckoutSteps from "@/components/shared/checkout-steps";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import OrderDetailsTable from "./order-details-table";
-import Stripe from "stripe";
-import StripePayment from "./stripe-payment";
 
 export const metadata: Metadata = {
   title: "Order Details",
@@ -16,31 +14,17 @@ export const metadata: Metadata = {
 
 const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
   const { id } = await props.params;
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("User not authenticated");
 
   const order = await getOrderById(id);
-  const safeOrder = JSON.parse(JSON.stringify(order));
-  if (!order) {
-    notFound();
-  }
+  if (!order) notFound();
 
   const user = await getUserById(session.user.id);
 
-  let client_secret: string | undefined;
+  const safeOrder = JSON.parse(JSON.stringify(order));
 
-  //  Check if is not paid and using stripe
-  if (order.paymentMethod?.toLowerCase() === "stripe" && !order.isPaid) {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(order.totalPrice) * 100),
-      currency: "usd",
-      metadata: { orderId: order.id },
-    });
-
-    client_secret = paymentIntent.client_secret ?? undefined;
-  }
   return (
     <>
       <CheckoutSteps current={4} />
@@ -52,42 +36,32 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
           <OrderDetailsTable
             order={safeOrder}
             paypalClientId={process.env.PAYPAL_CLIENT_ID || "sb"}
-            stripeClientSecret={client_secret}
             paymentMethod={user.paymentMethod || undefined}
-            isAdmin={session?.user?.role === "admin" || false}
+            isAdmin={session.user.role === "admin"}
           />
         </div>
+
         <div>
           <Card>
-            <CardContent className="p-4 gap-4 space-y-4">
+            <CardContent className="p-4 space-y-4">
               <div className="flex justify-between">
-                Items
-                <div>{formatCurrency(Number(order.itemsPrice))}</div>
+                <span>Items</span>
+                <span>{formatCurrency(Number(order.itemsPrice))}</span>
               </div>
+
               <div className="flex justify-between">
-                Tax
-                <div>{formatCurrency(Number(order.taxPrice))}</div>
+                <span>Tax</span>
+                <span>{formatCurrency(Number(order.taxPrice))}</span>
               </div>
+
               <div className="flex justify-between">
-                Shipping
-                <div>{formatCurrency(Number(order.shippingPrice))}</div>
+                <span>Shipping</span>
+                <span>{formatCurrency(Number(order.shippingPrice))}</span>
               </div>
-              <div className="flex justify-between">
-                Total
-                <div>{formatCurrency(Number(order.totalPrice))}</div>
-              </div>
-              {/* THE FIX: Use toLowerCase() to match "stripe" vs "Stripe" */}
-              <div className="pt-4 border-t mt-4 space-y-2">
-                {/* The Logic Fix */}
-                {!order.isPaid &&
-                  order.paymentMethod?.toLowerCase() === "stripe" &&
-                  client_secret && (
-                    <StripePayment
-                      priceInCents={Math.round(Number(order.totalPrice) * 100)}
-                      orderId={order.id}
-                      clientSecret={client_secret}
-                    />
-                  )}
+
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span>{formatCurrency(Number(order.totalPrice))}</span>
               </div>
             </CardContent>
           </Card>

@@ -11,8 +11,7 @@ import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { PAGE_SIZE } from "../constants";
 import { Prisma } from "@prisma/client";
-import { success } from "zod";
-import { error } from "console";
+import Stripe from "stripe";
 
 // Create order from cart
 export async function createOrder() {
@@ -135,6 +134,154 @@ export async function createPayPalOrderFromCart() {
   }
 }
 
+export async function createStripeOrderFromCart() {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    const cart = await getMyCart();
+
+    if (!cart || cart.items.length === 0) {
+      throw new Error("Cart is empty");
+    }
+
+    const user = await getUserById(session.user.id);
+
+    if (!user.address || !user.paymentMethod) {
+      throw new Error("Shipping address and payment method are required");
+    }
+
+    if (user.paymentMethod.toLowerCase() !== "stripe") {
+      throw new Error("Stripe payment method is not selected");
+    }
+
+    // Create order
+    const newOrder = await prisma.order.create({
+      data: {
+        userId: session.user.id,
+        shippingAddress: user.address,
+        itemsPrice: cart.itemsPrice,
+        shippingPrice: cart.shippingPrice,
+        taxPrice: cart.taxPrice,
+        totalPrice: cart.totalPrice,
+        paymentMethod: user.paymentMethod,
+      },
+    });
+
+    // Create order items
+    for (const item of cart.items) {
+      await prisma.orderItem.create({
+        data: {
+          orderId: newOrder.id,
+          productId: item.productId,
+          qty: item.qty,
+          price: item.price,
+          name: item.name,
+          slug: item.slug,
+          image: item.image,
+        },
+      });
+    }
+
+    // Create Stripe payment intent ONCE
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(Number(newOrder.totalPrice) * 100),
+      currency: "usd",
+      metadata: {
+        orderId: String(newOrder.id),
+      },
+    });
+
+    // Save payment intent info on order
+    await prisma.order.update({
+      where: { id: newOrder.id },
+      data: {
+        stripePaymentIntentId: paymentIntent.id,
+        stripeClientSecret: paymentIntent.client_secret,
+      },
+    });
+
+    console.log("Created PaymentIntent:", {
+      paymentIntentId: paymentIntent.id,
+      orderId: newOrder.id,
+      metadata: paymentIntent.metadata,
+    });
+
+    if (!paymentIntent.client_secret) {
+      throw new Error("Stripe client secret not returned");
+    }
+
+    return {
+      success: true,
+      message: "Stripe order created successfully",
+      data: {
+        orderId: newOrder.id,
+        clientSecret: paymentIntent.client_secret,
+        totalPrice: Number(newOrder.totalPrice),
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: await formatError(error),
+    };
+  }
+}
+
+export async function approveStripeOrder(
+  orderId: string,
+  paymentIntentId: string,
+) {
+  try {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status !== "succeeded") {
+      throw new Error("Stripe payment is not completed");
+    }
+    if (String(paymentIntent.metadata.orderId) !== String(orderId)) {
+      throw new Error("Payment does not belong to this order");
+    }
+
+    await updateOrderToPaid({
+      orderId,
+      paymentResult: {
+        id: paymentIntent.id,
+        status: paymentIntent.status,
+        email_address: paymentIntent.receipt_email ?? "",
+        pricePaid:
+          paymentIntent.amount_received != null
+            ? (paymentIntent.amount_received / 100).toFixed(2)
+            : "0",
+      },
+    });
+
+    const session = await auth();
+    if (session?.user?.id) {
+      const cart = await prisma.cart.findFirst({
+        where: { userId: session.user.id },
+      });
+      if (cart) {
+        await prisma.cart.delete({ where: { id: cart.id } });
+      }
+    }
+
+    revalidatePath(`/order/${orderId}`);
+
+    return { success: true, message: "Order paid successfully" };
+  } catch (error) {
+    return {
+      success: false,
+      message: await formatError(error),
+    };
+  }
+}
+
 // Approve paypal order and update order to paid
 
 export async function approvePaypalOrder(
@@ -244,7 +391,7 @@ export async function getOrderById(id: string) {
   if (!res) {
     throw new Error("Order not found");
   }
-  return res as any; // We'll handle type conversion in the component
+  return res;
 }
 
 export async function createPayPalOrder(orderId: string) {
@@ -287,17 +434,17 @@ export async function getMyOrders({
 }) {
   const session = await auth();
 
-  if (!session) throw new Error("User is not authorized");
+  if (!session?.user?.id) throw new Error("User is not authorized");
 
   const data = await prisma.order.findMany({
-    where: { userId: session?.user?.id! },
+    where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     take: limit,
     skip: (page - 1) * limit,
   });
 
   const dataCount = await prisma.order.count({
-    where: { userId: session?.user?.id! },
+    where: { userId: session.user.id },
   });
   return {
     data,
