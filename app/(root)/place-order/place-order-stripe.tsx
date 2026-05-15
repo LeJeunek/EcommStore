@@ -60,9 +60,11 @@ const StripeCheckoutForm = ({
     }
 
     if ("paymentIntent" in result) {
-      const paymentIntent = (result as unknown as {
-        paymentIntent: { id: string; status?: string };
-      }).paymentIntent;
+      const paymentIntent = (
+        result as unknown as {
+          paymentIntent: { id: string; status?: string };
+        }
+      ).paymentIntent;
 
       if (paymentIntent?.status === "succeeded") {
         const res = await approveStripeOrder(orderId, paymentIntent.id);
