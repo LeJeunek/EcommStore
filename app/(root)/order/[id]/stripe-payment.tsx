@@ -56,18 +56,22 @@ const StripePayment = ({
         return;
       }
 
-      // At this point, result should have paymentIntent
-      const paymentIntent = (result as { paymentIntent: any }).paymentIntent;
-      if (paymentIntent?.status === "succeeded") {
-        const res = await approveStripeOrder(orderId, paymentIntent.id);
-        if (!res.success) {
-          setErrorMessage(res.message);
-          setIsLoading(false);
+      if ("paymentIntent" in result) {
+        const paymentIntent = (result as unknown as {
+          paymentIntent: { id: string; status?: string };
+        }).paymentIntent;
+
+        if (paymentIntent?.status === "succeeded") {
+          const res = await approveStripeOrder(orderId, paymentIntent.id);
+          if (!res.success) {
+            setErrorMessage(res.message);
+            setIsLoading(false);
+            return;
+          }
+          // Redirect to success page since payment succeeded immediately
+          window.location.href = `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`;
           return;
         }
-        // Redirect to success page since payment succeeded immediately
-        window.location.href = `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`;
-        return;
       }
 
       setErrorMessage("Payment did not complete. Please try again.");

@@ -59,23 +59,26 @@ const StripeCheckoutForm = ({
       return;
     }
 
-    // At this point, result should have paymentIntent
-    const paymentIntent = (result as { paymentIntent: any }).paymentIntent;
+    if ("paymentIntent" in result) {
+      const paymentIntent = (result as unknown as {
+        paymentIntent: { id: string; status?: string };
+      }).paymentIntent;
 
-    if (paymentIntent?.status === "succeeded") {
-      const res = await approveStripeOrder(orderId, paymentIntent.id);
+      if (paymentIntent?.status === "succeeded") {
+        const res = await approveStripeOrder(orderId, paymentIntent.id);
 
-      if (!res.success) {
-        setErrorMessage(res.message);
-        setIsProcessing(false);
+        if (!res.success) {
+          setErrorMessage(res.message);
+          setIsProcessing(false);
+          return;
+        }
+
+        router.push(`/stripe-payment-success?id=${orderId}`);
         return;
       }
 
-      router.push(`/stripe-payment-success?id=${orderId}`);
-      return;
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   };
 
   return (
