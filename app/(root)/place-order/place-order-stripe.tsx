@@ -73,12 +73,14 @@ const StripeCheckoutForm = ({
           return;
         }
 
-        router.push(`/stripe-payment-success?id=${orderId}`);
+        router.push(
+          `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`,
+        );
         return;
       }
-
-      setIsProcessing(false);
     }
+
+    setIsProcessing(false);
   };
 
   return (
@@ -117,7 +119,6 @@ const PlaceOrderStripe = () => {
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
   );
 
-  // ✅ FIX: prevent duplicate order creation (React Strict Mode safe)
   const hasCreated = useRef(false);
 
   useEffect(() => {

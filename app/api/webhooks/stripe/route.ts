@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { updateOrderToPaid } from "@/lib/actions/order.actions";
+import { prisma } from "@/lib/prisma";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await updateOrderToPaid({
+    const updatedOrder = await updateOrderToPaid({
       orderId,
       paymentResult: {
         id: paymentIntent.id,
@@ -50,6 +51,12 @@ export async function POST(req: NextRequest) {
             : "0",
       },
     });
+
+    if (updatedOrder.user?.id) {
+      await prisma.cart.deleteMany({
+        where: { userId: updatedOrder.user.id },
+      });
+    }
 
     return NextResponse.json({
       message: "Updated order to paid successfully",
@@ -67,7 +74,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await updateOrderToPaid({
+    const updatedOrder = await updateOrderToPaid({
       orderId,
       paymentResult: {
         id: charge.id,
@@ -76,6 +83,12 @@ export async function POST(req: NextRequest) {
         pricePaid: (charge.amount / 100).toFixed(2),
       },
     });
+
+    if (updatedOrder.user?.id) {
+      await prisma.cart.deleteMany({
+        where: { userId: updatedOrder.user.id },
+      });
+    }
 
     return NextResponse.json({
       message: "Updated order to paid successfully",
