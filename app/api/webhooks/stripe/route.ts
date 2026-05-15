@@ -7,7 +7,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 export async function POST(req: NextRequest) {
   const signature = req.headers.get("stripe-signature");
   if (!signature) {
-    return NextResponse.json({ message: "Missing Stripe signature" }, { status: 400 });
+    return NextResponse.json(
+      { message: "Missing Stripe signature" },
+      { status: 400 },
+    );
   }
 
   let event: Stripe.Event;
@@ -18,7 +21,10 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET as string,
     );
   } catch (error) {
-    return NextResponse.json({ message: "Webhook signature verification failed" }, { status: 400 });
+    return NextResponse.json(
+      { message: "Webhook signature verification failed" },
+      { status: 400 },
+    );
   }
 
   if (event.type === "payment_intent.succeeded") {
@@ -26,7 +32,10 @@ export async function POST(req: NextRequest) {
     const orderId = String(paymentIntent.metadata?.orderId || "");
 
     if (!orderId) {
-      return NextResponse.json({ message: "Missing order ID metadata" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Missing order ID metadata" },
+        { status: 400 },
+      );
     }
 
     await updateOrderToPaid({
@@ -52,7 +61,10 @@ export async function POST(req: NextRequest) {
     const orderId = String(charge.metadata?.orderId || "");
 
     if (!orderId) {
-      return NextResponse.json({ message: "Missing order ID metadata" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Missing order ID metadata" },
+        { status: 400 },
+      );
     }
 
     await updateOrderToPaid({
