@@ -352,7 +352,9 @@ export async function updateOrderToPaid({
   });
 
   if (!order) throw new Error("Order not found");
-  if (order.isPaid) throw new Error("Order is already paid");
+  if (order.isPaid) {
+    return order;
+  }
 
   // Update product stock for each order item
   for (const item of order.orderItems) {
