@@ -3,7 +3,6 @@ import { FormEvent, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
-  LinkAuthenticationElement,
   PaymentElement,
   useElements,
   useStripe,
@@ -45,9 +44,8 @@ const StripePayment = ({
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/order/stripe-payment-success?id=${orderId}&payment_intent={PAYMENT_INTENT}`,
+          return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
         },
-        redirect: "if_required",
       });
 
       if (result.error) {
@@ -58,16 +56,18 @@ const StripePayment = ({
         return;
       }
 
-      if (result.paymentIntent?.status === "succeeded") {
-        const res = await approveStripeOrder(orderId, result.paymentIntent.id);
+      // At this point, result should have paymentIntent
+      const paymentIntent = (result as { paymentIntent: any }).paymentIntent;
+      if (paymentIntent?.status === "succeeded") {
+        const res = await approveStripeOrder(orderId, paymentIntent.id);
         if (!res.success) {
           setErrorMessage(res.message);
           setIsLoading(false);
           return;
         }
-        //  Redirect will happen automatically via Stripe's confirmPayment redirect
+        // Redirect to success page since payment succeeded immediately
+        window.location.href = `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`;
         return;
-      }
       }
 
       setErrorMessage("Payment did not complete. Please try again.");
@@ -78,13 +78,6 @@ const StripePayment = ({
         <div className="text-xl">Stripe Checkout</div>
         {errorMessage && <div className="text-destructive">{errorMessage}</div>}
         <PaymentElement />
-        <div>
-          <LinkAuthenticationElement
-            onChange={(e) => {
-              setEmail(e.value.email);
-            }}
-          />
-        </div>
         <Button
           type="submit"
           className="w-full"

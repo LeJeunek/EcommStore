@@ -48,9 +48,8 @@ const StripeCheckoutForm = ({
 
     const result = await stripe.confirmPayment({
       elements,
-      redirect: "if_required",
       confirmParams: {
-        return_url: `${window.location.origin}/order/stripe-payment-success?id=${orderId}`,
+        return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
       },
     });
 
@@ -60,7 +59,8 @@ const StripeCheckoutForm = ({
       return;
     }
 
-    const paymentIntent = result.paymentIntent;
+    // At this point, result should have paymentIntent
+    const paymentIntent = (result as { paymentIntent: any }).paymentIntent;
 
     if (paymentIntent?.status === "succeeded") {
       const res = await approveStripeOrder(orderId, paymentIntent.id);
@@ -71,7 +71,7 @@ const StripeCheckoutForm = ({
         return;
       }
 
-      router.push(`/order/${orderId}`);
+      router.push(`/stripe-payment-success?id=${orderId}`);
       return;
     }
 
