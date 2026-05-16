@@ -273,3 +273,47 @@ export async function removeItemFromCart(productId: string) {
     return { success: false, message: formatError(error) };
   }
 }
+
+export async function clearCart() {
+  try {
+    const cookieStore = await cookies();
+    const sessionCartId = cookieStore.get("sessionCartId")?.value;
+
+    const session = await auth();
+    const userId = session?.user?.id as string | undefined;
+
+    const cart = await prisma.cart.findFirst({
+      where: {
+        OR: [{ userId: userId ?? undefined }, { sessionCartId }],
+      },
+    });
+
+    if (!cart) {
+      return {
+        success: true,
+        message: "Cart already empty",
+      };
+    }
+
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: {
+        items: [],
+        itemsPrice: "0",
+        shippingPrice: "0",
+        taxPrice: "0",
+        totalPrice: "0",
+      },
+    });
+
+    return {
+      success: true,
+      message: "Cart cleared",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: formatError(error),
+    };
+  }
+}
