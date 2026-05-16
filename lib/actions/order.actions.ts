@@ -215,9 +215,8 @@ export async function createStripeOrderFromCart() {
     }
 
     // STRIPE
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-      apiVersion: "2025-04-30.basil",
-    });
+    // STRIPE
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
     // CREATE PAYMENT INTENT
     const paymentIntent = await stripe.paymentIntents.create({
