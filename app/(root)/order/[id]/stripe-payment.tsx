@@ -38,10 +38,22 @@ const StripePayment = ({
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
+      // 1. Safety check for Stripe library loading
       if (!stripe || !elements) return;
 
       setIsLoading(true);
 
+      // 2. Validate form and mount state first
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setErrorMessage(
+          submitError.message ?? "Payment elements are not ready.",
+        );
+        setIsLoading(false);
+        return; // Stop execution early if elements aren't mounted/valid
+      }
+
+      // 3. Safe to confirm payment now
       const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -54,7 +66,6 @@ const StripePayment = ({
         setErrorMessage(
           result.error.message ?? "An unexpected error occurred.",
         );
-
         setIsLoading(false);
       }
 
