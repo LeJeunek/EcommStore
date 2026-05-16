@@ -4,9 +4,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { updateOrderToPaid } from "@/lib/actions/order.actions";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2025-04-30.basil",
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -85,11 +83,8 @@ export async function POST(req: NextRequest) {
         paymentResult: {
           id: paymentIntent.id,
           status: paymentIntent.status,
-          email_address:
-            paymentIntent.receipt_email ?? "",
-          pricePaid: (
-            paymentIntent.amount_received / 100
-          ).toFixed(2),
+          email_address: paymentIntent.receipt_email ?? "",
+          pricePaid: (paymentIntent.amount_received / 100).toFixed(2),
         },
       });
 
