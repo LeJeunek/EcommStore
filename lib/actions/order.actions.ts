@@ -233,55 +233,6 @@ export async function createStripeOrderFromCart() {
   }
 }
 
-export async function approveStripeOrder(
-  orderId: string,
-  paymentIntentId: string,
-) {
-  try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (paymentIntent.status !== "succeeded") {
-      throw new Error("Stripe payment is not completed");
-    }
-    if (String(paymentIntent.metadata.orderId) !== String(orderId)) {
-      throw new Error("Payment does not belong to this order");
-    }
-
-    await updateOrderToPaid({
-      orderId,
-      paymentResult: {
-        id: paymentIntent.id,
-        status: paymentIntent.status,
-        email_address: paymentIntent.receipt_email ?? "",
-        pricePaid:
-          paymentIntent.amount_received != null
-            ? (paymentIntent.amount_received / 100).toFixed(2)
-            : "0",
-      },
-    });
-
-    const session = await auth();
-    if (session?.user?.id) {
-      const cart = await prisma.cart.findFirst({
-        where: { userId: session.user.id },
-      });
-      if (cart) {
-        await prisma.cart.delete({ where: { id: cart.id } });
-      }
-    }
-
-    revalidatePath(`/order/${orderId}`);
-
-    return { success: true, message: "Order paid successfully" };
-  } catch (error) {
-    return {
-      success: false,
-      message: await formatError(error),
-    };
-  }
-}
-
 // Approve paypal order and update order to paid
 
 export async function approvePaypalOrder(

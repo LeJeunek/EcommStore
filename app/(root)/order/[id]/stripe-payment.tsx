@@ -1,4 +1,5 @@
 "use client";
+
 import { FormEvent, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -7,10 +8,15 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+
 import { useTheme } from "next-themes";
+
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
-import { approveStripeOrder } from "@/lib/actions/order.actions";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
+);
 
 const StripePayment = ({
   priceInCents,
@@ -21,16 +27,12 @@ const StripePayment = ({
   orderId: string;
   clientSecret: string;
 }) => {
-  const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
-  );
-
   const { theme, systemTheme } = useTheme();
 
-  //  Stripe form component
   const StripeForm = () => {
     const stripe = useStripe();
     const elements = useElements();
+
     const [isLoading, setIsLoading] = useState(false);
 
     const [errorMessage, setErrorMessage] = useState("");
@@ -38,7 +40,8 @@ const StripePayment = ({
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
-      if (stripe == null || elements == null) return;
+      if (!stripe || !elements) return;
+
       setIsLoading(true);
 
       const result = await stripe.confirmPayment({
@@ -52,41 +55,24 @@ const StripePayment = ({
         setErrorMessage(
           result.error.message ?? "An unexpected error occurred.",
         );
+
         setIsLoading(false);
-        return;
       }
-
-      if ("paymentIntent" in result) {
-        const paymentIntent = (result as unknown as {
-          paymentIntent: { id: string; status?: string };
-        }).paymentIntent;
-
-        if (paymentIntent?.status === "succeeded") {
-          const res = await approveStripeOrder(orderId, paymentIntent.id);
-          if (!res.success) {
-            setErrorMessage(res.message);
-            setIsLoading(false);
-            return;
-          }
-          // Redirect to success page since payment succeeded immediately
-          window.location.href = `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`;
-          return;
-        }
-      }
-
-      setErrorMessage("Payment did not complete. Please try again.");
-      setIsLoading(false);
     };
+
     return (
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="text-xl">Stripe Checkout</div>
+
         {errorMessage && <div className="text-destructive">{errorMessage}</div>}
+
         <PaymentElement />
+
         <Button
           type="submit"
           className="w-full"
           size="lg"
-          disabled={stripe == null || elements == null || isLoading}
+          disabled={!stripe || !elements || isLoading}
         >
           {isLoading
             ? "Purchasing..."
@@ -98,6 +84,7 @@ const StripePayment = ({
 
   return (
     <Elements
+      stripe={stripePromise}
       options={{
         clientSecret,
         appearance: {
@@ -111,7 +98,6 @@ const StripePayment = ({
                   : "stripe",
         },
       }}
-      stripe={stripePromise}
     >
       <StripeForm />
     </Elements>
