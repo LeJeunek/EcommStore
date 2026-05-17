@@ -1,8 +1,7 @@
 import Link from "next/link";
-
 import { Button } from "@/components/ui/button";
-
 import { getOrderById } from "@/lib/actions/order.actions";
+import { notFound } from "next/navigation"; // 1. Imported notFound
 
 const SuccessPage = async (props: {
   searchParams: Promise<{
@@ -31,6 +30,11 @@ const SuccessPage = async (props: {
         </div>
       </div>
     );
+  }
+
+  // 2. Added safety check to stop TypeScript from complaining about a 'null' order
+  if (!order) {
+    return notFound();
   }
 
   // Webhook has not updated DB yet
