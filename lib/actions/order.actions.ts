@@ -136,24 +136,24 @@ export async function createPayPalOrderFromCart() {
 export async function createStripeOrderFromCart() {
   try {
     const session = await auth();
-
     if (!session?.user?.id) {
       throw new Error("User not authenticated");
     }
 
     const cart = await getMyCart();
-
     if (!cart || cart.items.length === 0) {
       throw new Error("Cart is empty");
     }
 
     const user = await getUserById(session.user.id);
-
     if (!user.address || !user.paymentMethod) {
       throw new Error("Shipping address and payment method are required");
     }
 
-    if (user.paymentMethod.toLowerCase() !== "stripe") {
+    if (
+      !user.paymentMethod ||
+      user.paymentMethod.trim().toLowerCase() !== "stripe"
+    ) {
       throw new Error("Stripe payment method is not selected");
     }
 
@@ -164,7 +164,9 @@ export async function createStripeOrderFromCart() {
         isPaid: false,
         paymentMethod: "Stripe",
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     // REUSE EXISTING PAYMENT INTENT
@@ -179,6 +181,7 @@ export async function createStripeOrderFromCart() {
         data: {
           orderId: existingOrder.id,
           clientSecret: existingOrder.stripeClientSecret,
+          // FIX 1: Wrap it safely in Number() to dodge the TypeScript error
           totalPrice: Number(existingOrder.totalPrice),
         },
       };
@@ -212,13 +215,12 @@ export async function createStripeOrderFromCart() {
       });
     }
 
-    // STRIPE
-    // STRIPE
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-    const priceString = newOrder.totalPrice.toString();
-    const amountInCents = Math.round(parseFloat(priceString) * 100);
+    // FIX 2: Safely convert to integer cents using standard Number() parsing
+    const amountInCents = Math.round(Number(newOrder.totalPrice) * 100);
 
+    // CREATE PAYMENT INTENT
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "usd",
@@ -245,18 +247,13 @@ export async function createStripeOrderFromCart() {
       },
     });
 
-    console.log("Created PaymentIntent:", {
-      paymentIntentId: paymentIntent.id,
-      orderId: newOrder.id,
-      metadata: paymentIntent.metadata,
-    });
-
     return {
       success: true,
       message: "Stripe order created successfully",
       data: {
         orderId: newOrder.id,
         clientSecret: paymentIntent.client_secret,
+        // FIX 3: Wrap it here as well
         totalPrice: Number(newOrder.totalPrice),
       },
     };
