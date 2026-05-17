@@ -58,11 +58,12 @@ const StripeCheckoutForm = ({
 
     setIsProcessing(true);
 
+    // Find this block inside your components:
     const result = await stripe.confirmPayment({
       elements,
-
       confirmParams: {
-        return_url: `${window.location.origin}/order/stripe-payment-success?id=${orderId}`,
+        // CHANGE THIS LINE:
+        return_url: `${window.location.origin}/order/${orderId}/stripe-payment-success`,
       },
     });
 
