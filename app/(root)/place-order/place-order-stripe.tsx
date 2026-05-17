@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useRef, useState } from "react";
+
 import { loadStripe } from "@stripe/stripe-js";
+
 import {
   Elements,
   PaymentElement,
@@ -11,16 +12,25 @@ import {
 } from "@stripe/react-stripe-js";
 
 import { Button } from "@/components/ui/button";
+
 import { formatCurrency } from "@/lib/utils";
-import {
-  approveStripeOrder,
-  createStripeOrderFromCart,
-} from "@/lib/actions/order.actions";
+
+import { createStripeOrderFromCart } from "@/lib/actions/order.actions";
+
 import { useToast } from "@/hooks/use-toast";
+
+/* =========================
+   LOAD STRIPE ONCE
+========================= */
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
+);
 
 /* =========================
    STRIPE FORM
 ========================= */
+
 const StripeCheckoutForm = ({
   orderId,
   totalPrice,
@@ -29,14 +39,16 @@ const StripeCheckoutForm = ({
   totalPrice: number;
 }) => {
   const stripe = useStripe();
+
   const elements = useElements();
-  const router = useRouter();
 
   const [isProcessing, setIsProcessing] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     setErrorMessage("");
 
     if (!stripe || !elements) {
@@ -48,41 +60,21 @@ const StripeCheckoutForm = ({
 
     const result = await stripe.confirmPayment({
       elements,
+
       confirmParams: {
         return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
       },
     });
 
+    // Stripe automatically redirects on success
+
     if (result.error) {
       setErrorMessage(result.error.message || "Payment failed");
+
       setIsProcessing(false);
+
       return;
     }
-
-    if ("paymentIntent" in result) {
-      const paymentIntent = (
-        result as unknown as {
-          paymentIntent: { id: string; status?: string };
-        }
-      ).paymentIntent;
-
-      if (paymentIntent?.status === "succeeded") {
-        const res = await approveStripeOrder(orderId, paymentIntent.id);
-
-        if (!res.success) {
-          setErrorMessage(res.message);
-          setIsProcessing(false);
-          return;
-        }
-
-        router.push(
-          `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`,
-        );
-        return;
-      }
-    }
-
-    setIsProcessing(false);
   };
 
   return (
@@ -105,6 +97,7 @@ const StripeCheckoutForm = ({
 /* =========================
    MAIN COMPONENT
 ========================= */
+
 const PlaceOrderStripe = () => {
   const { toast } = useToast();
 
@@ -115,17 +108,16 @@ const PlaceOrderStripe = () => {
   } | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const stripePromise = loadStripe(
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
-  );
+  const [error, setError] = useState<string | null>(null);
 
   const hasCreated = useRef(false);
 
   useEffect(() => {
     const createOrder = async () => {
+      // Prevent duplicate order creation
       if (hasCreated.current) return;
+
       hasCreated.current = true;
 
       try {
@@ -133,10 +125,12 @@ const PlaceOrderStripe = () => {
 
         if (!res.success || !res.data) {
           setError(res.message);
+
           toast({
             variant: "destructive",
             description: res.message,
           });
+
           return;
         }
 
@@ -150,6 +144,7 @@ const PlaceOrderStripe = () => {
           err instanceof Error ? err.message : "Failed to create order";
 
         setError(msg);
+
         toast({
           variant: "destructive",
           description: msg,
