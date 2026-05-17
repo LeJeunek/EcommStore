@@ -62,7 +62,7 @@ const StripeCheckoutForm = ({
       elements,
 
       confirmParams: {
-        return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
+        return_url: `${window.location.origin}/order/stripe-payment-success?id=${orderId}`,
       },
     });
 
