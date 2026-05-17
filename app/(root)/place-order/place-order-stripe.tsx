@@ -60,9 +60,11 @@ const StripeCheckoutForm = ({
     }
 
     if ("paymentIntent" in result) {
-      const paymentIntent = (result as unknown as {
-        paymentIntent: { id: string; status?: string };
-      }).paymentIntent;
+      const paymentIntent = (
+        result as unknown as {
+          paymentIntent: { id: string; status?: string };
+        }
+      ).paymentIntent;
 
       if (paymentIntent?.status === "succeeded") {
         const res = await approveStripeOrder(orderId, paymentIntent.id);
@@ -73,12 +75,14 @@ const StripeCheckoutForm = ({
           return;
         }
 
-        router.push(`/stripe-payment-success?id=${orderId}`);
+        router.push(
+          `/stripe-payment-success?id=${orderId}&payment_intent=${paymentIntent.id}`,
+        );
         return;
       }
-
-      setIsProcessing(false);
     }
+
+    setIsProcessing(false);
   };
 
   return (
@@ -117,7 +121,6 @@ const PlaceOrderStripe = () => {
     process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
   );
 
-  // ✅ FIX: prevent duplicate order creation (React Strict Mode safe)
   const hasCreated = useRef(false);
 
   useEffect(() => {

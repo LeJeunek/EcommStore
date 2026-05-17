@@ -133,7 +133,6 @@ export async function createPayPalOrderFromCart() {
     };
   }
 }
-
 export async function createStripeOrderFromCart() {
   try {
     const session = await auth();
@@ -158,7 +157,36 @@ export async function createStripeOrderFromCart() {
       throw new Error("Stripe payment method is not selected");
     }
 
-    // Create order
+    // CHECK FOR EXISTING UNPAID ORDER
+    const existingOrder = await prisma.order.findFirst({
+      where: {
+        userId: session.user.id,
+        isPaid: false,
+        paymentMethod: "Stripe",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // REUSE EXISTING PAYMENT INTENT
+    if (
+      existingOrder &&
+      existingOrder.stripeClientSecret &&
+      existingOrder.stripePaymentIntentId
+    ) {
+      return {
+        success: true,
+        message: "Existing Stripe order found",
+        data: {
+          orderId: existingOrder.id,
+          clientSecret: existingOrder.stripeClientSecret,
+          totalPrice: Number(existingOrder.totalPrice),
+        },
+      };
+    }
+
+    // CREATE ORDER
     const newOrder = await prisma.order.create({
       data: {
         userId: session.user.id,
@@ -171,7 +199,7 @@ export async function createStripeOrderFromCart() {
       },
     });
 
-    // Create order items
+    // CREATE ORDER ITEMS
     for (const item of cart.items) {
       await prisma.orderItem.create({
         data: {
@@ -186,20 +214,33 @@ export async function createStripeOrderFromCart() {
       });
     }
 
-    // Create Stripe payment intent ONCE
+    // STRIPE
+    // STRIPE
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
+    // CREATE PAYMENT INTENT
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(Number(newOrder.totalPrice) * 100),
       currency: "usd",
+
+      automatic_payment_methods: {
+        enabled: true,
+      },
+
       metadata: {
         orderId: String(newOrder.id),
       },
     });
 
-    // Save payment intent info on order
+    if (!paymentIntent.client_secret) {
+      throw new Error("Stripe client secret not returned");
+    }
+
+    // SAVE STRIPE DATA
     await prisma.order.update({
-      where: { id: newOrder.id },
+      where: {
+        id: newOrder.id,
+      },
       data: {
         stripePaymentIntentId: paymentIntent.id,
         stripeClientSecret: paymentIntent.client_secret,
@@ -211,10 +252,6 @@ export async function createStripeOrderFromCart() {
       orderId: newOrder.id,
       metadata: paymentIntent.metadata,
     });
-
-    if (!paymentIntent.client_secret) {
-      throw new Error("Stripe client secret not returned");
-    }
 
     return {
       success: true,
@@ -299,17 +336,20 @@ export async function updateOrderToPaid({
     where: { id: orderId },
     include: {
       orderItems: true,
+      user: { select: { id: true, name: true, email: true } },
     },
   });
 
   if (!order) throw new Error("Order not found");
-  if (order.isPaid) throw new Error("Order is already paid");
+  if (order.isPaid) {
+    return order;
+  }
 
   // Update product stock for each order item
   for (const item of order.orderItems) {
     await prisma.product.update({
       where: { id: item.productId },
-      data: { stock: { increment: -item.qty } },
+      data: { stock: { decrement: item.qty } },
     });
   }
 
@@ -323,7 +363,7 @@ export async function updateOrderToPaid({
     },
     include: {
       orderItems: true,
-      user: { select: { name: true, email: true } },
+      user: { select: { id: true, name: true, email: true } },
     },
   });
 
