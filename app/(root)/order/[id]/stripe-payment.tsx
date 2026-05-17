@@ -7,25 +7,31 @@ import {
   PaymentElement,
   useElements,
   useStripe,
+  Appearance,
 } from "@stripe/react-stripe-js";
-import type { Appearance } from "@stripe/stripe-js";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
-// Move outside component so it isn't recreated on every render
+// LOAD STRIPE OUTSIDE COMPONENT
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
 );
 
-const StripeForm = ({
+type Props = {
+  priceInCents: number;
+  orderId: string;
+  clientSecret: string;
+};
+
+function StripeForm({
   priceInCents,
   orderId,
 }: {
   priceInCents: number;
   orderId: string;
-}) => {
+}) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -35,60 +41,58 @@ const StripeForm = ({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!stripe || !elements) return;
-
-    setIsLoading(true);
     setErrorMessage("");
 
-    // Validate PaymentElement first
+    // STRIPE NOT READY
+    if (!stripe || !elements) {
+      setErrorMessage("Stripe has not loaded yet.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    // VALIDATE ELEMENTS
     const { error: submitError } = await elements.submit();
 
     if (submitError) {
-      setErrorMessage(submitError.message ?? "Payment form is not ready.");
+      setErrorMessage(submitError.message || "Payment form error.");
       setIsLoading(false);
       return;
     }
 
-    // Confirm payment
-    const result = await stripe.confirmPayment({
+    // CONFIRM PAYMENT
+    const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
       },
-      redirect: "if_required",
     });
 
-    if (result.error) {
-      setErrorMessage(result.error.message ?? "Payment failed.");
+    if (error) {
+      setErrorMessage(error.message || "Payment failed.");
       setIsLoading(false);
-      return;
-    }
-
-    // Successful payment without redirect
-    if (result.paymentIntent?.status === "succeeded") {
-      window.location.href = `/stripe-payment-success?id=${orderId}`;
     }
   };
 
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <div className="text-2xl font-semibold">Stripe Checkout</div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <h2 className="text-2xl font-bold">Stripe Checkout</h2>
 
       {errorMessage && (
-        <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-500">
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {errorMessage}
         </div>
       )}
 
-      <div className="rounded-xl border p-4">
+      <div className="rounded-xl border bg-background p-4 min-h-[220px]">
         <PaymentElement />
       </div>
 
       <Button
         type="submit"
-        className="w-full"
         size="lg"
-        disabled={!stripe || !elements || isLoading}
+        className="w-full"
+        disabled={!stripe || isLoading}
       >
         {isLoading
           ? "Processing..."
@@ -96,28 +100,20 @@ const StripeForm = ({
       </Button>
     </form>
   );
-};
+}
 
-const StripePayment = ({
+export default function StripePayment({
   priceInCents,
   orderId,
   clientSecret,
-}: {
-  priceInCents: number;
-  orderId: string;
-  clientSecret: string;
-}) => {
+}: Props) {
   const { theme, systemTheme } = useTheme();
 
-  // Properly typed Stripe appearance theme
+  const currentTheme = theme === "system" ? systemTheme : theme;
+
+  // FIX STRIPE THEME TYPE
   const appearanceTheme: Appearance["theme"] =
-    theme === "dark"
-      ? "night"
-      : theme === "light"
-        ? "stripe"
-        : systemTheme === "dark"
-          ? "night"
-          : "stripe";
+    currentTheme === "dark" ? "night" : "stripe";
 
   const options = useMemo(
     () => ({
@@ -129,18 +125,23 @@ const StripePayment = ({
     [clientSecret, appearanceTheme],
   );
 
-  // Prevent rendering before clientSecret exists
+  // DEBUG CLIENT SECRET
+  console.log("CLIENT SECRET:", clientSecret);
+
+  // PREVENT PAYMENT ELEMENT FROM FAILING SILENTLY
   if (!clientSecret) {
-    return <div className="text-center py-10">Loading payment form...</div>;
+    return (
+      <div className="text-red-500 font-medium">
+        Missing Stripe client secret
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="mx-auto w-full max-w-xl">
       <Elements stripe={stripePromise} options={options}>
         <StripeForm priceInCents={priceInCents} orderId={orderId} />
       </Elements>
     </div>
   );
-};
-
-export default StripePayment;
+}
