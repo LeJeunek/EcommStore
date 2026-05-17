@@ -5,8 +5,6 @@ import { updateOrderToPaid } from "@/lib/actions/order.actions";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
