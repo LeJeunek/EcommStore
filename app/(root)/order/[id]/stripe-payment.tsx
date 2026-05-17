@@ -7,8 +7,8 @@ import {
   PaymentElement,
   useElements,
   useStripe,
-  Appearance,
 } from "@stripe/react-stripe-js";
+import type { Appearance } from "@stripe/stripe-js";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
