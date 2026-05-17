@@ -8,15 +8,15 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import type { Appearance } from "@stripe/stripe-js";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
-// Move stripePromise OUTSIDE component
-// so it isn't recreated on every render
+// Move outside component so it isn't recreated on every render
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY as string,
 );
 
 const StripeForm = ({
@@ -35,43 +35,44 @@ const StripeForm = ({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    setErrorMessage("");
-
-    // Stripe.js not yet loaded
-    if (!stripe || !elements) {
-      setErrorMessage("Stripe has not loaded yet.");
-      return;
-    }
+    if (!stripe || !elements) return;
 
     setIsLoading(true);
+    setErrorMessage("");
 
-    // Validate payment form first
+    // Validate PaymentElement first
     const { error: submitError } = await elements.submit();
 
     if (submitError) {
-      setErrorMessage(submitError.message || "Payment form is not ready.");
+      setErrorMessage(submitError.message ?? "Payment form is not ready.");
       setIsLoading(false);
       return;
     }
 
     // Confirm payment
-    const { error } = await stripe.confirmPayment({
+    const result = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/stripe-payment-success?id=${orderId}`,
       },
+      redirect: "if_required",
     });
 
-    // Only errors handled here
-    if (error) {
-      setErrorMessage(error.message || "Something went wrong with payment.");
+    if (result.error) {
+      setErrorMessage(result.error.message ?? "Payment failed.");
       setIsLoading(false);
+      return;
+    }
+
+    // Successful payment without redirect
+    if (result.paymentIntent?.status === "succeeded") {
+      window.location.href = `/stripe-payment-success?id=${orderId}`;
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <h2 className="text-2xl font-semibold">Stripe Checkout</h2>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <div className="text-2xl font-semibold">Stripe Checkout</div>
 
       {errorMessage && (
         <div className="rounded-md bg-red-500/10 p-3 text-sm text-red-500">
@@ -79,16 +80,15 @@ const StripeForm = ({
         </div>
       )}
 
-      {/* THIS is the actual Stripe UI */}
       <div className="rounded-xl border p-4">
         <PaymentElement />
       </div>
 
       <Button
         type="submit"
-        size="lg"
         className="w-full"
-        disabled={!stripe || isLoading}
+        size="lg"
+        disabled={!stripe || !elements || isLoading}
       >
         {isLoading
           ? "Processing..."
@@ -109,31 +109,29 @@ const StripePayment = ({
 }) => {
   const { theme, systemTheme } = useTheme();
 
-  // Prevent Elements from rerendering unnecessarily
+  // Properly typed Stripe appearance theme
+  const appearanceTheme: Appearance["theme"] =
+    theme === "dark"
+      ? "night"
+      : theme === "light"
+        ? "stripe"
+        : systemTheme === "dark"
+          ? "night"
+          : "stripe";
+
   const options = useMemo(
     () => ({
       clientSecret,
       appearance: {
-        theme:
-          theme === "dark"
-            ? "night"
-            : theme === "light"
-              ? "stripe"
-              : systemTheme === "dark"
-                ? "night"
-                : "stripe",
-      },
+        theme: appearanceTheme,
+      } satisfies Appearance,
     }),
-    [clientSecret, theme, systemTheme],
+    [clientSecret, appearanceTheme],
   );
 
   // Prevent rendering before clientSecret exists
   if (!clientSecret) {
-    return (
-      <div className="text-center text-muted-foreground">
-        Loading payment form...
-      </div>
-    );
+    return <div className="text-center py-10">Loading payment form...</div>;
   }
 
   return (
