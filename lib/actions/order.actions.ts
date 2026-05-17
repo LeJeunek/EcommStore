@@ -216,15 +216,15 @@ export async function createStripeOrderFromCart() {
     // STRIPE
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
-    // CREATE PAYMENT INTENT
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(newOrder.totalPrice) * 100),
-      currency: "usd",
+    const priceString = newOrder.totalPrice.toString();
+    const amountInCents = Math.round(parseFloat(priceString) * 100);
 
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency: "usd",
       automatic_payment_methods: {
         enabled: true,
       },
-
       metadata: {
         orderId: String(newOrder.id),
       },

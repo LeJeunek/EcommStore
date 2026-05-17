@@ -155,7 +155,7 @@ const PlaceOrderStripe = () => {
     };
 
     createOrder();
-  }, [toast]);
+  }, []);
 
   if (isLoading) {
     return <div className="text-center">Loading Stripe checkout...</div>;
