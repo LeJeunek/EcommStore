@@ -60,7 +60,8 @@ const StripeForm = ({
     const { error } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/order/stripe-payment-success?id=${orderId}`,
+        // FIXED: Updated the path layout to match app/(root)/order/[id]/stripe-payment-success
+        return_url: `${window.location.origin}/order/${orderId}/stripe-payment-success`,
       },
     });
 
