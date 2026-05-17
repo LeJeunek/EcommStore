@@ -164,9 +164,7 @@ export async function createStripeOrderFromCart() {
         isPaid: false,
         paymentMethod: "Stripe",
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
     // REUSE EXISTING PAYMENT INTENT
@@ -372,6 +370,14 @@ export async function updateOrderToPaid({
 }
 
 export async function getOrderById(id: string) {
+  // Validate UUID structure using regex before querying the DB
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!id || !uuidRegex.test(id)) {
+    console.error(`Invalid UUID format requested: "${id}"`);
+    return null;
+  }
+
   const res = await prisma.order.findFirst({
     where: { id },
     include: {
@@ -379,9 +385,7 @@ export async function getOrderById(id: string) {
       user: { select: { name: true, email: true } },
     },
   });
-  if (!res) {
-    throw new Error("Order not found");
-  }
+
   return res;
 }
 
