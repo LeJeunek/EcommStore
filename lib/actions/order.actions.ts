@@ -319,7 +319,7 @@ export async function approvePaypalOrder(
   }
 }
 
-eexport async function updateOrderToPaid({
+export async function updateOrderToPaid({
   orderId,
   paymentResult,
 }: {
@@ -330,7 +330,7 @@ eexport async function updateOrderToPaid({
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
-      orderItems: true, 
+      orderItems: true,
     },
   });
 
@@ -344,7 +344,7 @@ eexport async function updateOrderToPaid({
     prisma.product.update({
       where: { id: item.productId },
       data: { stock: { decrement: item.qty } },
-    })
+    }),
   );
 
   // 2. Create the order payment update promise
