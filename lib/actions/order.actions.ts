@@ -330,8 +330,7 @@ export async function updateOrderToPaid({
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
-      orderItems: true,
-      user: { select: { id: true, name: true, email: true } },
+      orderitems: true, // Matching your schema's lowercase relation name
     },
   });
 
@@ -340,42 +339,48 @@ export async function updateOrderToPaid({
     return order;
   }
 
-  // Use a transaction to ensure stock updates, order updates, and cart deletion happen safely together
-  const updatedOrder = await prisma.$transaction(async (tx) => {
-    // 1. Update product stock for each order item
-    for (const item of order.orderItems) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.qty } },
-      });
-    }
+  // 1. Create stock decrement update promises
+  const stockUpdates = order.orderitems.map((item) =>
+    prisma.product.update({
+      where: { id: item.productId },
+      data: { stock: { decrement: item.qty } },
+    }),
+  );
 
-    // 2. Set the order to paid
-    const updated = await tx.order.update({
-      where: { id: orderId },
-      data: {
-        isPaid: true,
-        paidAt: new Date(),
-        paymentResult,
-      },
-      include: {
-        orderItems: true,
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    // 3. Clear the user's cart now that the order is officially marked paid
-    await tx.cart.deleteMany({
-      where: { userId: order.userId },
-    });
-
-    return updated;
+  // 2. Create the order payment update promise
+  const orderUpdate = prisma.order.update({
+    where: { id: orderId },
+    data: {
+      isPaid: true,
+      paidAt: new Date(),
+      paymentResult,
+    },
+    include: {
+      orderitems: true,
+      user: { select: { id: true, name: true, email: true } },
+    },
   });
+
+  // 3. Create the cart deletion promise
+  const cartDeletion = prisma.cart.deleteMany({
+    where: { userId: order.userId },
+  });
+
+  // Execute all operations together in a parallel batch array transaction
+  // This completely bypasses the callback typing issue!
+  const transactionResults = await prisma.$transaction([
+    ...stockUpdates,
+    orderUpdate,
+    cartDeletion,
+  ]);
+
+  // Grab the updated order item out of the transaction array response
+  const updatedOrder = transactionResults[stockUpdates.length] as any;
 
   if (!updatedOrder) throw new Error("Order not found after update");
 
-  // Revalidate paths to refresh headers/cart counts across the application
   revalidatePath("/cart");
+  revalidatePath(`/order/${orderId}`);
 
   return updatedOrder;
 }
