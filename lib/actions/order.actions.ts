@@ -319,18 +319,18 @@ export async function approvePaypalOrder(
   }
 }
 
-export async function updateOrderToPaid({
+eexport async function updateOrderToPaid({
   orderId,
   paymentResult,
 }: {
   orderId: string;
   paymentResult?: PaymentResult;
 }) {
-  // Get order from database
+  // Get order from database using camelCase relation name
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
-      orderitems: true, // Matching your schema's lowercase relation name
+      orderItems: true, 
     },
   });
 
@@ -340,11 +340,11 @@ export async function updateOrderToPaid({
   }
 
   // 1. Create stock decrement update promises
-  const stockUpdates = order.orderitems.map((item) =>
+  const stockUpdates = order.orderItems.map((item) =>
     prisma.product.update({
       where: { id: item.productId },
       data: { stock: { decrement: item.qty } },
-    }),
+    })
   );
 
   // 2. Create the order payment update promise
@@ -356,7 +356,7 @@ export async function updateOrderToPaid({
       paymentResult,
     },
     include: {
-      orderitems: true,
+      orderItems: true,
       user: { select: { id: true, name: true, email: true } },
     },
   });
@@ -367,14 +367,13 @@ export async function updateOrderToPaid({
   });
 
   // Execute all operations together in a parallel batch array transaction
-  // This completely bypasses the callback typing issue!
   const transactionResults = await prisma.$transaction([
     ...stockUpdates,
     orderUpdate,
     cartDeletion,
   ]);
 
-  // Grab the updated order item out of the transaction array response
+  // Grab the updated order item out of the transaction array response cleanly
   const updatedOrder = transactionResults[stockUpdates.length] as any;
 
   if (!updatedOrder) throw new Error("Order not found after update");
