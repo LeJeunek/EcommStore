@@ -340,29 +340,43 @@ export async function updateOrderToPaid({
     return order;
   }
 
-  // Update product stock for each order item
-  for (const item of order.orderItems) {
-    await prisma.product.update({
-      where: { id: item.productId },
-      data: { stock: { decrement: item.qty } },
-    });
-  }
+  // Use a transaction to ensure stock updates, order updates, and cart deletion happen safely together
+  const updatedOrder = await prisma.$transaction(async (tx) => {
+    // 1. Update product stock for each order item
+    for (const item of order.orderItems) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { decrement: item.qty } },
+      });
+    }
 
-  // Set the order to paid
-  const updatedOrder = await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      isPaid: true,
-      paidAt: new Date(),
-      paymentResult,
-    },
-    include: {
-      orderItems: true,
-      user: { select: { id: true, name: true, email: true } },
-    },
+    // 2. Set the order to paid
+    const updated = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        isPaid: true,
+        paidAt: new Date(),
+        paymentResult,
+      },
+      include: {
+        orderItems: true,
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // 3. Clear the user's cart now that the order is officially marked paid
+    await tx.cart.deleteMany({
+      where: { userId: order.userId },
+    });
+
+    return updated;
   });
 
   if (!updatedOrder) throw new Error("Order not found after update");
+
+  // Revalidate paths to refresh headers/cart counts across the application
+  revalidatePath("/cart");
+
   return updatedOrder;
 }
 

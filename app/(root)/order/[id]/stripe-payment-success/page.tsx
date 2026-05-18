@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getOrderById } from "@/lib/actions/order.actions";
 import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 const SuccessPage = async (props: {
   params: Promise<{ id: string }>; // 1. Switched searchParams to params
@@ -48,6 +49,8 @@ const SuccessPage = async (props: {
       </div>
     );
   }
+
+  revalidatePath("/cart");
 
   return (
     <div className="max-w-4xl w-full mx-auto space-y-8">
