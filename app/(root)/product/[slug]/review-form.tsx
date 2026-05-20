@@ -34,10 +34,7 @@ import { StarIcon } from "lucide-react";
 import { useState } from "react";
 import { Resolver, SubmitHandler, useForm } from "react-hook-form";
 import z from "zod";
-import {
-  createUpdateReview,
-  getReviewByProductId,
-} from "@/lib/actions/review.actions";
+
 import {
   createUpdateReview,
   getReviewByProductId,
