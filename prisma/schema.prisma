@@ -109,8 +109,8 @@ model Order {
   createdAt       DateTime  @default(now()) @db.Timestamp(6)
   paymentMethod   String
 
-  stripePaymentIntentId String?
-  stripeClientSecret    String?
+ stripeClientSecret      String?
+  stripePaymentIntentId   String?
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
