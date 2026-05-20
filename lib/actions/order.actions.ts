@@ -5,13 +5,14 @@ import { paypal } from "@/lib/paypal";
 import { formatError } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { PaymentResult } from "@/types";
+import { PaymentResult, ShippingAddress } from "@/types";
 import { auth } from "@/auth";
 import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { PAGE_SIZE } from "../constants";
 import { Prisma } from "@prisma/client";
 import Stripe from "stripe";
+import { sendPurchaseReceipt } from "@/email";
 
 // Create order from cart
 export async function createOrder() {
@@ -378,6 +379,13 @@ export async function updateOrderToPaid({
 
   if (!updatedOrder) throw new Error("Order not found after update");
 
+  sendPurchaseReceipt({
+    order: {
+      ...updatedOrder,
+      shippingAddress: updatedOrder.ShippingAddress as ShippingAddress,
+      paymentResult: updatedOrder.paymentResult as PaymentResult,
+    }
+  })
   revalidatePath("/cart");
   revalidatePath(`/order/${orderId}`);
 
