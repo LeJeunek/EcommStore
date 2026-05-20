@@ -32,8 +32,12 @@ import { insertReviewSchema } from "@/lib/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { StarIcon } from "lucide-react";
 import { useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { Resolver, SubmitHandler, useForm } from "react-hook-form";
 import z from "zod";
+import {
+  createUpdateReview,
+  getReviewByProductId,
+} from "@/lib/actions/review.actions";
 import {
   createUpdateReview,
   getReviewByProductId,

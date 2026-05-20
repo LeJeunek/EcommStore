@@ -11,8 +11,7 @@ import { getMyCart } from "./cart.actions";
 import { getUserById } from "./user.actions";
 import { PAGE_SIZE } from "../constants";
 import { Prisma } from "@prisma/client";
-import { success } from "zod";
-import { error } from "console";
+import Stripe from "stripe";
 
 // Create order from cart
 export async function createOrder() {
@@ -134,6 +133,137 @@ export async function createPayPalOrderFromCart() {
     };
   }
 }
+export async function createStripeOrderFromCart() {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    const cart = await getMyCart();
+    if (!cart || cart.items.length === 0) {
+      throw new Error("Cart is empty");
+    }
+
+    const user = await getUserById(session.user.id);
+    if (!user.address || !user.paymentMethod) {
+      throw new Error("Shipping address and payment method are required");
+    }
+
+    if (
+      !user.paymentMethod ||
+      user.paymentMethod.trim().toLowerCase() !== "stripe"
+    ) {
+      throw new Error("Stripe payment method is not selected");
+    }
+
+    // CHECK FOR EXISTING UNPAID ORDER
+    const existingOrder = await prisma.order.findFirst({
+      where: {
+        userId: session.user.id,
+        isPaid: false,
+        paymentMethod: "Stripe",
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    // REUSE EXISTING PAYMENT INTENT
+    if (
+      existingOrder &&
+      existingOrder.stripeClientSecret &&
+      existingOrder.stripePaymentIntentId
+    ) {
+      return {
+        success: true,
+        message: "Existing Stripe order found",
+        data: {
+          orderId: existingOrder.id,
+          clientSecret: existingOrder.stripeClientSecret,
+          // FIX 1: Wrap it safely in Number() to dodge the TypeScript error
+          totalPrice: Number(existingOrder.totalPrice),
+        },
+      };
+    }
+
+    // CREATE ORDER
+    const newOrder = await prisma.order.create({
+      data: {
+        userId: session.user.id,
+        shippingAddress: user.address,
+        itemsPrice: cart.itemsPrice,
+        shippingPrice: cart.shippingPrice,
+        taxPrice: cart.taxPrice,
+        totalPrice: cart.totalPrice,
+        paymentMethod: user.paymentMethod,
+      },
+    });
+
+    // CREATE ORDER ITEMS
+    for (const item of cart.items) {
+      await prisma.orderItem.create({
+        data: {
+          orderId: newOrder.id,
+          productId: item.productId,
+          qty: item.qty,
+          price: item.price,
+          name: item.name,
+          slug: item.slug,
+          image: item.image,
+        },
+      });
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+
+    // FIX 2: Safely convert to integer cents using standard Number() parsing
+    const amountInCents = Math.round(Number(newOrder.totalPrice) * 100);
+
+    // CREATE PAYMENT INTENT
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency: "usd",
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        orderId: String(newOrder.id),
+      },
+    });
+
+    if (!paymentIntent.client_secret) {
+      throw new Error("Stripe client secret not returned");
+    }
+
+    // SAVE STRIPE DATA
+    await prisma.order.update({
+      where: {
+        id: newOrder.id,
+      },
+      data: {
+        stripePaymentIntentId: paymentIntent.id,
+        stripeClientSecret: paymentIntent.client_secret,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Stripe order created successfully",
+      data: {
+        orderId: newOrder.id,
+        clientSecret: paymentIntent.client_secret,
+        // FIX 3: Wrap it here as well
+        totalPrice: Number(newOrder.totalPrice),
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: await formatError(error),
+    };
+  }
+}
 
 // Approve paypal order and update order to paid
 
@@ -189,14 +319,14 @@ export async function approvePaypalOrder(
   }
 }
 
-async function updateOrderToPaid({
+export async function updateOrderToPaid({
   orderId,
   paymentResult,
 }: {
   orderId: string;
   paymentResult?: PaymentResult;
 }) {
-  // Get order from database
+  // Get order from database using camelCase relation name
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
@@ -205,18 +335,20 @@ async function updateOrderToPaid({
   });
 
   if (!order) throw new Error("Order not found");
-  if (order.isPaid) throw new Error("Order is already paid");
-
-  // Update product stock for each order item
-  for (const item of order.orderItems) {
-    await prisma.product.update({
-      where: { id: item.productId },
-      data: { stock: { increment: -item.qty } },
-    });
+  if (order.isPaid) {
+    return order;
   }
 
-  // Set the order to paid
-  const updatedOrder = await prisma.order.update({
+  // 1. Create stock decrement update promises
+  const stockUpdates = order.orderItems.map((item) =>
+    prisma.product.update({
+      where: { id: item.productId },
+      data: { stock: { decrement: item.qty } },
+    }),
+  );
+
+  // 2. Create the order payment update promise
+  const orderUpdate = prisma.order.update({
     where: { id: orderId },
     data: {
       isPaid: true,
@@ -225,15 +357,42 @@ async function updateOrderToPaid({
     },
     include: {
       orderItems: true,
-      user: { select: { name: true, email: true } },
+      user: { select: { id: true, name: true, email: true } },
     },
   });
 
+  // 3. Create the cart deletion promise
+  const cartDeletion = prisma.cart.deleteMany({
+    where: { userId: order.userId },
+  });
+
+  // Execute all operations together in a parallel batch array transaction
+  const transactionResults = await prisma.$transaction([
+    ...stockUpdates,
+    orderUpdate,
+    cartDeletion,
+  ]);
+
+  // Grab the updated order item out of the transaction array response cleanly
+  const updatedOrder = transactionResults[stockUpdates.length] as any;
+
   if (!updatedOrder) throw new Error("Order not found after update");
+
+  revalidatePath("/cart");
+  revalidatePath(`/order/${orderId}`);
+
   return updatedOrder;
 }
 
 export async function getOrderById(id: string) {
+  // Validate UUID structure using regex before querying the DB
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!id || !uuidRegex.test(id)) {
+    console.error(`Invalid UUID format requested: "${id}"`);
+    return null;
+  }
+
   const res = await prisma.order.findFirst({
     where: { id },
     include: {
@@ -241,10 +400,8 @@ export async function getOrderById(id: string) {
       user: { select: { name: true, email: true } },
     },
   });
-  if (!res) {
-    throw new Error("Order not found");
-  }
-  return res as any; // We'll handle type conversion in the component
+
+  return res;
 }
 
 export async function createPayPalOrder(orderId: string) {
@@ -290,14 +447,14 @@ export async function getMyOrders({
   if (!session) throw new Error("User is not authorized");
 
   const data = await prisma.order.findMany({
-    where: { userId: session?.user?.id! },
+    where: { userId: session?.user?.id },
     orderBy: { createdAt: "desc" },
     take: limit,
     skip: (page - 1) * limit,
   });
 
   const dataCount = await prisma.order.count({
-    where: { userId: session?.user?.id! },
+    where: { userId: session?.user?.id },
   });
   return {
     data,

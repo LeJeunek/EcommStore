@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import CartTable from "./cart-table";
 import { getMyCart } from "@/lib/actions/cart.actions";
 export const metadata = {

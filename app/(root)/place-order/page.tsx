@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
 import { getMyCart } from "@/lib/actions/cart.actions";
 import { getUserById } from "@/lib/actions/user.actions";
@@ -20,6 +21,7 @@ import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
 import PlaceOrderForm from "./place-order.form";
 import PlaceOrderPayPal from "./place-order-paypal";
+import PlaceOrderStripe from "./place-order-stripe";
 
 export const metadata: Metadata = {
   title: "Place Order",
@@ -94,7 +96,7 @@ const PlaceOrderPage = async () => {
                     <TableRow key={item.slug}>
                       <TableCell>
                         <Link
-                          href={`/products/${item.slug}`}
+                          href={`/product/${item.slug}`}
                           className="flex items-center"
                         >
                           <Image
@@ -146,6 +148,8 @@ const PlaceOrderPage = async () => {
                     "sb"
                   }
                 />
+              ) : user.paymentMethod?.toLowerCase() === "stripe" ? (
+                <PlaceOrderStripe />
               ) : (
                 <PlaceOrderForm />
               )}

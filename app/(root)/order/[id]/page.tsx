@@ -14,16 +14,16 @@ export const metadata: Metadata = {
 
 const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
   const { id } = await props.params;
+
   const session = await auth();
   if (!session?.user?.id) throw new Error("User not authenticated");
 
   const order = await getOrderById(id);
-  const safeOrder = JSON.parse(JSON.stringify(order));
-  if (!order) {
-    notFound();
-  }
+  if (!order) notFound();
 
   const user = await getUserById(session.user.id);
+
+  const safeOrder = JSON.parse(JSON.stringify(order));
 
   return (
     <>
@@ -37,27 +37,31 @@ const OrderDetailsPage = async (props: { params: Promise<{ id: string }> }) => {
             order={safeOrder}
             paypalClientId={process.env.PAYPAL_CLIENT_ID || "sb"}
             paymentMethod={user.paymentMethod || undefined}
-            isAdmin={session?.user?.role === "admin" || false}
+            isAdmin={session.user.role === "admin"}
           />
         </div>
+
         <div>
           <Card>
-            <CardContent className="p-4 gap-4 space-y-4">
+            <CardContent className="p-4 space-y-4">
               <div className="flex justify-between">
-                Items
-                <div>{formatCurrency(Number(order.itemsPrice))}</div>
+                <span>Items</span>
+                <span>{formatCurrency(Number(order.itemsPrice))}</span>
               </div>
+
               <div className="flex justify-between">
-                Tax
-                <div>{formatCurrency(Number(order.taxPrice))}</div>
+                <span>Tax</span>
+                <span>{formatCurrency(Number(order.taxPrice))}</span>
               </div>
+
               <div className="flex justify-between">
-                Shipping
-                <div>{formatCurrency(Number(order.shippingPrice))}</div>
+                <span>Shipping</span>
+                <span>{formatCurrency(Number(order.shippingPrice))}</span>
               </div>
-              <div className="flex justify-between">
-                Total
-                <div>{formatCurrency(Number(order.totalPrice))}</div>
+
+              <div className="flex justify-between font-bold">
+                <span>Total</span>
+                <span>{formatCurrency(Number(order.totalPrice))}</span>
               </div>
             </CardContent>
           </Card>
