@@ -34,7 +34,10 @@ import { StarIcon } from "lucide-react";
 import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import z from "zod";
-import { createUpdateReview, getReviewByProductId } from "@/lib/actions/review.actions";
+import {
+  createUpdateReview,
+  getReviewByProductId,
+} from "@/lib/actions/review.actions";
 
 const ReviewForm = ({
   userId,
@@ -49,41 +52,46 @@ const ReviewForm = ({
 
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof insertReviewSchema>>({
+  const form = useForm<
+    z.input<typeof insertReviewSchema>,
+    any,
+    z.infer<typeof insertReviewSchema>
+  >({
     resolver: zodResolver(insertReviewSchema),
     defaultValues: reviewFormDefaultValues,
   });
 
-//   Submit handler
-const onSubmit:SubmitHandler<z.infer<typeof insertReviewSchema>> = async (values) => {
-    const res = await createUpdateReview({...values, productId });
-    
+  //   Submit handler
+  const onSubmit: SubmitHandler<z.infer<typeof insertReviewSchema>> = async (
+    values,
+  ) => {
+    const res = await createUpdateReview({ ...values, productId });
+
     if (!res.success) {
-        return toast({
-            variant: 'destructive',
-            description: res.message,
-        });
+      return toast({
+        variant: "destructive",
+        description: res.message,
+      });
     }
     setOpen(false);
     onReviewSubmitted();
 
     toast({
-        description: res.message, 
-    })
-}
+      description: res.message,
+    });
+  };
 
-//   Open form handler
+  //   Open form handler
   const handleOpenForm = async () => {
+    form.setValue("productId", productId);
+    form.setValue("userId", userId);
 
-    form.setValue('productId', productId );
-    form.setValue('userId', userId );
-
-    const review = await getReviewByProductId({productId})
+    const review = await getReviewByProductId({ productId });
 
     if (review) {
-      form.setValue('title', review.title);
-      form.setValue('description', review.description);
-      form.setValue('rating', review.rating);
+      form.setValue("title", review.title);
+      form.setValue("description", review.description);
+      form.setValue("rating", review.rating);
     }
     setOpen(true);
   };
@@ -134,9 +142,9 @@ const onSubmit:SubmitHandler<z.infer<typeof insertReviewSchema>> = async (values
                   <FormItem>
                     <FormLabel>Rating</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value.toString()}
-                    >
+  onValueChange={field.onChange}
+  value={(field.value !== undefined && field.value !== null) ? String(field.value) : ""}
+>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -160,9 +168,14 @@ const onSubmit:SubmitHandler<z.infer<typeof insertReviewSchema>> = async (values
               />
             </div>
             <DialogFooter>
-                <Button type="submit" size='lg' className="w-full" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? 'Submitting' : 'Submit'}
-                </Button>
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? "Submitting" : "Submit"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

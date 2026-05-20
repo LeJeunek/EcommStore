@@ -5,6 +5,7 @@ import { insertReviewSchema } from "../validators";
 import { auth } from "@/auth";
 import { formatError } from "@/lib/utils";
 import { prisma } from "../prisma";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 // Create and update Reviews
@@ -35,42 +36,50 @@ export async function createUpdateReview(data: z.infer<typeof insertReviewSchema
             }
         });
 
-        await prisma.$transaction(async (tx) => {
-            if (reviewExists) {
-                // Update review
-                await tx.review.update({
-                    where: { id: reviewExists.id },
+await prisma.$transaction(
+            async (tx) => {
+                if (reviewExists) {
+                    // Update review
+                    await tx.review.update({
+                        where: { id: reviewExists.id },
+                        data: {
+                            title: review.title,
+                            description: review.description,
+                            rating: review.rating
+                        }
+                    });
+                } else {
+                    // Create Review
+                    await tx.review.create({
+                        data: review
+                    });
+                }
+                
+                // Get avg rating
+                const averageRating = await tx.review.aggregate({
+                    _avg: { rating: true },
+                    where: { productId: review.productId },
+                });
+                
+                // Get number of reviews
+                const numReviews = await tx.review.count({
+                    where: { productId: review.productId }
+                });
+                
+                // Update the rating and numReviews in product table
+                await tx.product.update({
+                    where: { id: review.productId },
                     data: {
-                        title: review.title,
-                        description: review.description,
-                        rating: review.rating
+                        rating: averageRating._avg.rating || 0,
+                        numReviews
                     }
                 });
-            } else {
-                // Create Review
-                await tx.review.create({
-                    data: review
-                });
+            },
+            {
+                maxWait: 5000, // 5 seconds max wait to connect to DB
+                timeout: 10000, // 10 seconds max timeout for the transaction
             }
-            //  Get avg rating
-            const averageRating = await tx.review.aggregate({
-                _avg: { rating: true },
-                where: { productId: review.productId },
-            });
-            // Get number of reviews
-            const numReviews = await tx.review.count({
-                where: { productId: review.productId }
-            });
-            // update the rating and numReviews in product table
-            await tx.product.update({
-                where: { id: review.productId },
-                data: {
-                    rating: averageRating._avg.rating || 0,
-                    numReviews
-                }
-            })
-
-            });
+        );
 
 
         // Revalidate product page and return success

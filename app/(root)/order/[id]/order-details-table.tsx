@@ -36,7 +36,7 @@ const OrderDetailsTable = ({
   paymentMethod,
   isAdmin,
 }: {
-  order: any; // Using any to handle Prisma types
+  order: Omit<Order, 'paymentResult'>; // Using any to handle Prisma types
   paypalClientId: string;
   paymentMethod?: string;
   isAdmin: boolean;
