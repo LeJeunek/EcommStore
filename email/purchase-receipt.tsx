@@ -133,7 +133,6 @@ export default function PurchaseReceiptEmail({ order }: OrderInformationProps) {
                 { name: "Total", price: order.totalPrice },
               ].map(({ name, price }) => (
                 <Row key={name} className="py-1">
-                  
                   <Column align="right" className="px-2">
                     {name}:
                   </Column>
